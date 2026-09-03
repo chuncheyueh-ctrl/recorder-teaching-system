@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarClock, GraduationCap, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { useState } from "react";
+import { CalendarClock, GraduationCap, Pencil, Plus, Tag, Trash2, Users } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { timeRange, weekdayLabel } from "@/lib/date-utils";
 
@@ -101,6 +102,73 @@ export function MorePage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <GroupManager />
+    </div>
+  );
+}
+
+function GroupManager() {
+  const { state, save } = useAppState();
+  const groups = state.config.group || [];
+  const [newGroup, setNewGroup] = useState("");
+
+  function saveGroups(next: string[]) {
+    save(
+      "config.save",
+      { group: next },
+      { localUpdate: (prev) => ({ ...prev, config: { ...prev.config, group: next } }) }
+    );
+  }
+
+  function addGroup() {
+    const name = newGroup.trim();
+    if (!name || groups.includes(name)) return;
+    saveGroups([...groups, name]);
+    setNewGroup("");
+  }
+
+  function deleteGroup(name: string) {
+    const inUse = state.students.filter((s) => (s.groups || "").includes(name)).length;
+    const warn = inUse > 0 ? `，目前有 ${inUse} 位學生屬於這個團別` : "";
+    if (!confirm(`刪除團別「${name}」${warn}？`)) return;
+    saveGroups(groups.filter((g) => g !== name));
+  }
+
+  return (
+    <div className="card">
+      <div className="sectionHead">
+        <div className="badgeCircle red"><Tag size={20} /></div>
+        <div className="sectionText">
+          <h2>團別管理</h2>
+          <div className="sub">共 {groups.length} 個</div>
+        </div>
+      </div>
+      <div className="row" style={{ gap: 8, marginTop: 16 }}>
+        <input
+          value={newGroup}
+          onChange={(e) => setNewGroup(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addGroup();
+            }
+          }}
+          placeholder="例如：中階"
+        />
+        <button className="primary small" type="button" onClick={addGroup}>
+          <Plus size={14} /> 新增
+        </button>
+      </div>
+      <div className="list" style={{ marginTop: 16 }}>
+        {groups.length === 0 && <div className="empty">尚無團別，新增後就能在學生資料裡用下拉選單指定。</div>}
+        {groups.map((g) => (
+          <div className="item row" key={g}>
+            <b>{g}</b>
+            <button className="small danger" type="button" onClick={() => deleteGroup(g)}><Trash2 size={14} /></button>
+          </div>
+        ))}
       </div>
     </div>
   );

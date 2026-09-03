@@ -197,6 +197,16 @@ export async function apiPost(payload: Record<string, unknown>): Promise<ApiPost
       return await batchSaveAvailability(payload);
     }
 
+    if (action === "config.save") {
+      // Merge rather than overwrite — this doc also holds state/eventType/etc,
+      // and a group-list edit shouldn't touch fields it doesn't know about.
+      const data = { ...payload };
+      delete data.action;
+      delete data.requestId;
+      await setDoc(doc(db, "config", "app"), data, { merge: true });
+      return { ok: true, action };
+    }
+
     const [entity, verb] = action.split(".");
     const collectionName = ENTITY_COLLECTION[entity];
     if (!collectionName) return { ok: false, message: "不支援的操作：" + action };

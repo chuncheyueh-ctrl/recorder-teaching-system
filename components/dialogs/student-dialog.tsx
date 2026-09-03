@@ -25,6 +25,7 @@ function StudentForm({ target }: { target: { id?: string } }) {
   const [grade, setGrade] = useState(existing?.grade || "");
   const [groups, setGroups] = useState(existing?.groups || "");
   const [note, setNote] = useState(existing?.note || "");
+  const groupOptions = state.config.group || [];
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +42,18 @@ function StudentForm({ target }: { target: { id?: string } }) {
       <div className="formGrid">
         <label>姓名<input value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label>年級<input value={grade} onChange={(e) => setGrade(e.target.value)} /></label>
-        <label className="full">所屬團別<input value={groups} onChange={(e) => setGroups(e.target.value)} placeholder="可用逗號分隔" /></label>
+        <label className="full">
+          所屬團別
+          <select value={groups} onChange={(e) => setGroups(e.target.value)}>
+            <option value="">（未分類）</option>
+            {groupOptions.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          {groupOptions.length === 0 && (
+            <span className="sub">尚未建立任何團別，請先到「更多」頁的「團別管理」新增。</span>
+          )}
+        </label>
         <label className="full">備註<textarea value={note} onChange={(e) => setNote(e.target.value)} /></label>
       </div>
       <p><button className="primary" type="submit">儲存學生</button></p>
