@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   setDoc,
   where,
@@ -77,6 +78,38 @@ export async function apiGet(dateKey: string): Promise<ApiGetResult> {
   } catch (e) {
     return { ok: false, message: String(e instanceof Error ? e.message : e) };
   }
+}
+
+// Firestore keeps every query above "live" for free — subscribe instead of
+// polling so a change made on one device (web, another phone, …) shows up
+// on every other open device without anyone having to reload.
+export function subscribeToChanges(dateKey: string, onChange: () => void): () => void {
+  const weekStart = monday(dateKey);
+  const weekEnd = addDays(weekStart, 6);
+  const month = dateKey.slice(0, 7);
+  const monthStart = `${month}-01`;
+  const monthEnd = `${month}-31`;
+
+  const unsubscribers = [
+    onSnapshot(collection(db, "teachers"), onChange),
+    onSnapshot(collection(db, "students"), onChange),
+    onSnapshot(collection(db, "slots"), onChange),
+    onSnapshot(
+      query(collection(db, "availability"), where("dateKey", ">=", weekStart), where("dateKey", "<=", weekEnd)),
+      onChange
+    ),
+    onSnapshot(
+      query(collection(db, "records"), where("dateKey", ">=", weekStart), where("dateKey", "<=", weekEnd)),
+      onChange
+    ),
+    onSnapshot(
+      query(collection(db, "events"), where("dateKey", ">=", monthStart), where("dateKey", "<=", monthEnd)),
+      onChange
+    ),
+    onSnapshot(doc(db, "config", "app"), onChange),
+  ];
+
+  return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
 }
 
 export interface ApiPostResult {

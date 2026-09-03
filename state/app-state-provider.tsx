@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import type { AppState, EntityTable, PageKey } from "@/lib/types";
-import { apiGet, apiPost, type ApiGetResult } from "@/lib/api";
+import { apiGet, apiPost, subscribeToChanges, type ApiGetResult } from "@/lib/api";
 import { normalizeDateKey, toDateKey } from "@/lib/date-utils";
 import { loadTodaySnapshot, saveTodaySnapshot } from "@/lib/local-cache";
 
@@ -153,6 +153,24 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     if (!state.dateKey) return;
     const cached = dayCache.current.get(state.dateKey);
     queueMicrotask(() => refresh({ silent: !!cached }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.dateKey]);
+
+  // Live sync: any change to the currently-in-scope data — from this
+  // device or another one entirely (another browser tab, another
+  // teacher's phone) — re-pulls fresh data so nobody has to manually
+  // reload to see someone else's edit.
+  useEffect(() => {
+    if (!state.dateKey) return;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeToChanges(state.dateKey, () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => refresh({ silent: true }), 400);
+    });
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.dateKey]);
 
