@@ -300,6 +300,93 @@ dialog::backdrop {
 .full {
   grid-column: 1 / -1;
 }
+/* ---- Monthly availability grid ---- */
+.availMonthNav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+.availMonthNav b {
+  font-size: 16px;
+  min-width: 110px;
+}
+.availMonthNav button {
+  padding: 8px 14px;
+}
+.availCopyBtn {
+  margin-left: auto;
+}
+.availSlotTabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-x: auto;
+}
+.availSlotTab {
+  border-radius: 999px;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+.availSlotTab.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+.calGridWrap {
+  overflow-x: auto;
+  margin: 10px 0 4px;
+  /* The grid handles its own drag gesture — don't let touch scrolling
+     hijack the press-and-slide multi-select on mobile. */
+  touch-action: none;
+}
+.calGrid {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 320px;
+  user-select: none;
+}
+.calGrid th,
+.calGrid td {
+  border: 1px solid var(--line);
+  padding: 3px;
+  text-align: center;
+}
+.calGrid thead th {
+  background: #fff7ef;
+  color: var(--brand);
+  font-weight: 900;
+  font-size: 13px;
+  padding: 8px 4px;
+}
+.calBlank {
+  background: transparent;
+  border-color: transparent !important;
+}
+.calCell {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  padding: 0;
+  color: var(--ink);
+  font-weight: 800;
+  touch-action: none;
+}
+.calCell.active {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+.calCellOff {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--line);
+  font-weight: 800;
+}
+
 /* ---- Record wizard ---- */
 .wizardStepper {
   display: flex;

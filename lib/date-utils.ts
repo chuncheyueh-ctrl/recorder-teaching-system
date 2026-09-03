@@ -65,11 +65,47 @@ export function timeRange(a?: string, b?: string): string {
   return `${a || ""}${b ? "–" + b : ""}`;
 }
 
-export function weekdayOk(slot: { weekdays?: string }, dateKey: string): boolean {
+/** Same check as weekdayOk, but against a bare weekday number (0=Sun..6=Sat)
+ *  instead of a specific date — useful when working from a recurring
+ *  weekday pattern rather than an actual calendar date. */
+export function weekdayOkNum(slot: { weekdays?: string }, weekday: number): boolean {
   const w = String(slot.weekdays || "all");
   if (w === "none") return false;
   if (!w || w === "all" || w === "每天") return true;
-  return w.split(",").includes(String(parseDate(dateKey).getDay()));
+  return w.split(",").includes(String(weekday));
+}
+
+export function weekdayOk(slot: { weekdays?: string }, dateKey: string): boolean {
+  return weekdayOkNum(slot, parseDate(dateKey).getDay());
+}
+
+/** All "YYYY-MM-DD" dates in a "YYYY-MM" month. */
+export function monthDates(monthKey: string): string[] {
+  const [y, m] = monthKey.split("-").map(Number);
+  const count = new Date(y, m, 0).getDate();
+  return Array.from({ length: count }, (_, i) => `${monthKey}-${pad(i + 1)}`);
+}
+
+/** Shift a "YYYY-MM" month key by n months. */
+export function addMonths(monthKey: string, n: number): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
+/**
+ * A month laid out as calendar weeks (Sun..Sat columns), padded with null
+ * on either end so every row has exactly 7 cells and column index always
+ * equals weekday (0=Sun..6=Sat).
+ */
+export function calendarWeeks(monthKey: string): (string | null)[][] {
+  const days = monthDates(monthKey);
+  const firstWeekday = parseDate(days[0]).getDay();
+  const cells: (string | null)[] = [...Array(firstWeekday).fill(null), ...days];
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
 }
 
 /** Slots (or any weekdays-bearing list) applicable on the given date. */

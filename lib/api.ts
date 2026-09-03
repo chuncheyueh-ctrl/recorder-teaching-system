@@ -10,7 +10,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { AppConfig, AppState, EntityTable } from "./types";
+import type { Availability, AppConfig, AppState, EntityTable } from "./types";
 import { addDays, monday } from "./date-utils";
 
 export function uid(prefix: string): string {
@@ -95,31 +95,57 @@ const ENTITY_COLLECTION: Record<string, EntityTable> = {
   event: "events",
 };
 
+interface AvailabilityEntry {
+  dateKey: string;
+  slotId: string;
+}
+
+// Fetch by teacherId alone and filter the date range client-side — an
+// equality filter combined with a range filter on a different field needs a
+// composite index, which doesn't exist here, and one teacher's availability
+// set is small enough that this is cheap either way.
+export async function getTeacherAvailability(teacherId: string, start: string, end: string): Promise<Availability[]> {
+  const snap = await getDocs(query(collection(db, "availability"), where("teacherId", "==", teacherId)));
+  return snap.docs
+    .map((d) => withId<Availability>(d.id, d.data()))
+    .filter((a) => a.dateKey >= start && a.dateKey <= end);
+}
+
+// Teachers fill in a whole month's grid (slot x weekday) at once — replace
+// every existing entry across that date range for this teacher, rather than
+// one day at a time.
 async function batchSaveAvailability(payload: Record<string, unknown>): Promise<ApiPostResult> {
-  const dateKey = String(payload.dateKey || "");
+  const periodStart = String(payload.periodStart || "");
+  const periodEnd = String(payload.periodEnd || "");
   const teacherId = String(payload.teacherId || "");
   const teacherName = String(payload.teacherName || "");
   const note = String(payload.note || "");
-  const slotIds = Array.isArray(payload.slotIds) ? (payload.slotIds as string[]) : [];
-  if (!dateKey || !teacherId) return { ok: false, message: "缺少日期或老師" };
+  const entries = Array.isArray(payload.entries) ? (payload.entries as AvailabilityEntry[]) : [];
+  if (!periodStart || !periodEnd || !teacherId) return { ok: false, message: "缺少月份或老師" };
 
-  const existing = await getDocs(
-    query(collection(db, "availability"), where("dateKey", "==", dateKey), where("teacherId", "==", teacherId))
-  );
+  const existing = await getDocs(query(collection(db, "availability"), where("teacherId", "==", teacherId)));
+  const toDelete = existing.docs.filter((d) => {
+    const dateKey = (d.data() as { dateKey?: string }).dateKey || "";
+    return dateKey >= periodStart && dateKey <= periodEnd;
+  });
+  const slotIds = Array.from(new Set(entries.map((e) => e.slotId)));
   const slotDocs = await Promise.all(slotIds.map((slotId) => getDoc(doc(db, "slots", slotId))));
+  const slotById = new Map(
+    slotDocs.filter((snap) => snap.exists()).map((snap) => [snap.id, snap.data() as { name: string; start: string; end: string }])
+  );
 
   const batch = writeBatch(db);
-  existing.docs.forEach((d) => batch.delete(d.ref));
-  slotDocs.forEach((snap) => {
-    if (!snap.exists()) return;
-    const slot = snap.data() as { name: string; start: string; end: string };
+  toDelete.forEach((d) => batch.delete(d.ref));
+  entries.forEach(({ dateKey, slotId }) => {
+    const slot = slotById.get(slotId);
+    if (!slot) return;
     const id = uid("avail");
     batch.set(doc(db, "availability", id), {
       id,
       dateKey,
       teacherId,
       teacherName,
-      slotId: snap.id,
+      slotId,
       slotName: slot.name,
       start: slot.start,
       end: slot.end,
