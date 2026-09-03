@@ -18,17 +18,36 @@ export function StudentDialog() {
   );
 }
 
+function parseGroups(value: string): Set<string> {
+  return new Set(
+    value
+      .split(",")
+      .map((g) => g.trim())
+      .filter(Boolean)
+  );
+}
+
 function StudentForm({ target }: { target: { id?: string } }) {
   const { state, closeDialogs, save } = useAppState();
   const existing = target.id ? state.students.find((s) => s.id === target.id) : undefined;
   const [name, setName] = useState(existing?.name || "");
   const [grade, setGrade] = useState(existing?.grade || "");
-  const [groups, setGroups] = useState(existing?.groups || "");
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => parseGroups(existing?.groups || ""));
   const [note, setNote] = useState(existing?.note || "");
   const groupOptions = state.config.group || [];
 
+  function toggleGroup(name: string) {
+    setSelectedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const groups = Array.from(selectedGroups).join(",");
     const item: Student = { id: target.id || uid("student"), name, grade, groups, note };
     save("student.save", { ...item }, {
       localUpdate: (prev) => ({ ...prev, students: prev.students.filter((s) => s.id !== item.id).concat([item]) }),
@@ -43,15 +62,17 @@ function StudentForm({ target }: { target: { id?: string } }) {
         <label>姓名<input value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label>年級<input value={grade} onChange={(e) => setGrade(e.target.value)} /></label>
         <label className="full">
-          所屬團別
-          <select value={groups} onChange={(e) => setGroups(e.target.value)}>
-            <option value="">（未分類）</option>
-            {groupOptions.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-          {groupOptions.length === 0 && (
+          所屬團別（可複選，例如同時是社團又個別加強）
+          {groupOptions.length === 0 ? (
             <span className="sub">尚未建立任何團別，請先到「更多」頁的「團別管理」新增。</span>
+          ) : (
+            <div className="checkGrid">
+              {groupOptions.map((g) => (
+                <label key={g}>
+                  <input type="checkbox" checked={selectedGroups.has(g)} onChange={() => toggleGroup(g)} /> {g}
+                </label>
+              ))}
+            </div>
           )}
         </label>
         <label className="full">備註<textarea value={note} onChange={(e) => setNote(e.target.value)} /></label>
