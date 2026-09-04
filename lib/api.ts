@@ -1,4 +1,6 @@
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -199,20 +201,44 @@ interface ClassPromotion {
 }
 
 // End-of-year "everyone moves up a grade, same homeroom number" shortcut
-// (301 -> 401, etc). Writes every student's new className and the expanded
-// class-code list in one batch so a half-applied promotion can't happen.
+// (301 -> 401, etc). Writes every student's new className and unions in any
+// newly-introduced class codes in one batch so a half-applied promotion
+// can't happen. arrayUnion (not a full array overwrite) so this can't race
+// against someone else's edit to the class-code list either.
 async function promoteStudentClasses(payload: Record<string, unknown>): Promise<ApiPostResult> {
   const updates = Array.isArray(payload.updates) ? (payload.updates as ClassPromotion[]) : [];
   if (updates.length === 0) return { ok: false, message: "沒有需要更新的學生" };
-  const classCodes = Array.isArray(payload.classCodes) ? (payload.classCodes as string[]) : undefined;
+  const newClassCodes = Array.isArray(payload.newClassCodes) ? (payload.newClassCodes as string[]) : [];
 
   const batch = writeBatch(db);
   updates.forEach(({ id, className }) => {
     batch.set(doc(db, "students", id), { className }, { merge: true });
   });
-  if (classCodes) batch.set(doc(db, "config", "app"), { class: classCodes }, { merge: true });
+  if (newClassCodes.length > 0) {
+    batch.set(doc(db, "config", "app"), { class: arrayUnion(...newClassCodes) }, { merge: true });
+  }
   await batch.commit();
   return { ok: true, action: "student.promoteClasses" };
+}
+
+// Two teachers can independently add/remove a group or class code around
+// the same moment — arrayUnion/arrayRemove are atomic on Firestore's side,
+// unlike config.save's whole-array overwrite, so neither edit can silently
+// clobber the other's.
+async function addConfigItem(payload: Record<string, unknown>): Promise<ApiPostResult> {
+  const key = String(payload.key || "");
+  const value = String(payload.value || "");
+  if (!key || !value) return { ok: false, message: "缺少參數" };
+  await setDoc(doc(db, "config", "app"), { [key]: arrayUnion(value) }, { merge: true });
+  return { ok: true, action: "config.addItem" };
+}
+
+async function removeConfigItem(payload: Record<string, unknown>): Promise<ApiPostResult> {
+  const key = String(payload.key || "");
+  const value = String(payload.value || "");
+  if (!key || !value) return { ok: false, message: "缺少參數" };
+  await setDoc(doc(db, "config", "app"), { [key]: arrayRemove(value) }, { merge: true });
+  return { ok: true, action: "config.removeItem" };
 }
 
 export async function apiPost(payload: Record<string, unknown>): Promise<ApiPostResult> {
@@ -224,6 +250,14 @@ export async function apiPost(payload: Record<string, unknown>): Promise<ApiPost
 
     if (action === "student.promoteClasses") {
       return await promoteStudentClasses(payload);
+    }
+
+    if (action === "config.addItem") {
+      return await addConfigItem(payload);
+    }
+
+    if (action === "config.removeItem") {
+      return await removeConfigItem(payload);
     }
 
     if (action === "config.save") {

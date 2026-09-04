@@ -589,7 +589,7 @@ dialog::backdrop {
 .topBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 18px;
 }
 .iconBtn {
@@ -603,16 +603,6 @@ dialog::backdrop {
   display: grid;
   place-items: center;
   color: var(--ink);
-}
-.notifDot {
-  position: absolute;
-  top: 9px;
-  right: 10px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--red);
-  border: 2px solid #fff;
 }
 .pageTitle {
   font-size: 38px;

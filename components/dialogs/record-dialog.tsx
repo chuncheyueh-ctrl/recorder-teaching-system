@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAppState } from "@/state/app-state-provider";
 import { uid } from "@/lib/api";
 import { slotsForDate as slotsMatchingDate, timeRange } from "@/lib/date-utils";
+import { pickDefaultTeacherId, saveMyTeacherId } from "@/lib/my-teacher";
 import type { LessonRecord, Slot, Student } from "@/lib/types";
 import { Modal } from "@/components/ui/modal";
 
@@ -76,7 +77,7 @@ function RecordForm({ target }: { target: { slotId?: string; recordId?: string }
     dateKey: initialDateKey,
     slotId: initialSlotId,
     groupName: existing?.groupName || state.config.group?.[0] || "",
-    teacherId: existing?.teacherId || state.teachers[0]?.id || "",
+    teacherId: existing?.teacherId || pickDefaultTeacherId(state.teachers),
     studentIds: existing?.studentIds || [],
     focusStudentIds: existing?.focusStudentIds || [],
     focusTags: existing?.focusTags || [],
@@ -242,7 +243,13 @@ function RecordForm({ target }: { target: { slotId?: string; recordId?: string }
         <div className="formGrid">
           <label>
             老師
-            <select value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
+            <select
+              value={form.teacherId}
+              onChange={(e) => {
+                setForm({ ...form, teacherId: e.target.value });
+                saveMyTeacherId(e.target.value);
+              }}
+            >
               {state.teachers.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}

@@ -279,12 +279,13 @@ function StudentManager() {
       const cn = s.className!;
       return { id: s.id, className: String(Number(cn[0]) + 1) + cn.slice(1) };
     });
-    const classCodes = Array.from(new Set([...(state.config.class || []), ...updates.map((u) => u.className)]));
+    const existingClasses = state.config.class || [];
+    const newClassCodes = Array.from(new Set(updates.map((u) => u.className))).filter((c) => !existingClasses.includes(c));
 
-    await save("student.promoteClasses", { updates, classCodes }, {
+    await save("student.promoteClasses", { updates, newClassCodes }, {
       localUpdate: (prev) => ({
         ...prev,
-        config: { ...prev.config, class: classCodes },
+        config: { ...prev.config, class: Array.from(new Set([...(prev.config.class || []), ...newClassCodes])) },
         students: prev.students.map((s) => {
           const u = updates.find((x) => x.id === s.id);
           return u ? { ...s, className: u.className } : s;
@@ -387,16 +388,15 @@ function ConfigListManager({
   const items = state.config[configKey] || [];
   const [newItem, setNewItem] = useState("");
 
-  function saveItems(next: string[]) {
-    save("config.save", { [configKey]: next }, {
-      localUpdate: (prev) => ({ ...prev, config: { ...prev.config, [configKey]: next } }),
-    });
-  }
-
   function addItem() {
     const name = newItem.trim();
     if (!name || items.includes(name)) return;
-    saveItems([...items, name]);
+    save("config.addItem", { key: configKey, value: name }, {
+      localUpdate: (prev) => ({
+        ...prev,
+        config: { ...prev.config, [configKey]: [...(prev.config[configKey] || []), name] },
+      }),
+    });
     setNewItem("");
   }
 
@@ -404,7 +404,12 @@ function ConfigListManager({
     const inUse = countUsage(state, name);
     const warn = inUse > 0 ? `，目前有 ${inUse} ${usageNoun}` : "";
     if (!confirm(`刪除「${name}」${warn}？`)) return;
-    saveItems(items.filter((g) => g !== name));
+    save("config.removeItem", { key: configKey, value: name }, {
+      localUpdate: (prev) => ({
+        ...prev,
+        config: { ...prev.config, [configKey]: (prev.config[configKey] || []).filter((g) => g !== name) },
+      }),
+    });
   }
 
   return (

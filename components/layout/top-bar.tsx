@@ -1,22 +1,18 @@
 "use client";
 
-import { Bell, ChevronLeft, ChevronRight, Menu, Plus } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { addDays, displayDate, toDateKey } from "@/lib/date-utils";
 
 export function TopBar() {
-  const { state, changeDate, openRecordDialog } = useAppState();
+  const { state, changeDate, openRecordDialog, toast } = useAppState();
   const isToday = state.dateKey === toDateKey(new Date());
 
   return (
     <>
       <div className="topBar">
-        <button className="iconBtn" aria-label="選單">
-          <Menu size={20} />
-        </button>
-        <button className="iconBtn" aria-label="通知">
+        <button className="iconBtn" aria-label="通知" onClick={() => toast("提醒功能開發中，敬請期待")}>
           <Bell size={20} />
-          <span className="notifDot" />
         </button>
       </div>
 

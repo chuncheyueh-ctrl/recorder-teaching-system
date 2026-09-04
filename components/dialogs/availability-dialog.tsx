@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppState } from "@/state/app-state-provider";
 import { getTeacherAvailability, uid } from "@/lib/api";
 import { addDays, addMonths, calendarWeeks, monthDates, parseDate, weekdayOkNum } from "@/lib/date-utils";
+import { pickDefaultTeacherId, saveMyTeacherId } from "@/lib/my-teacher";
 import { Modal } from "@/components/ui/modal";
 import type { Availability } from "@/lib/types";
 
@@ -34,7 +35,7 @@ function AvailabilityForm() {
 
   const slots = [...state.slots].sort((a, b) => a.start.localeCompare(b.start));
 
-  const [teacherId, setTeacherId] = useState(state.teachers[0]?.id || "");
+  const [teacherId, setTeacherId] = useState(() => pickDefaultTeacherId(state.teachers));
   const [month, setMonth] = useState(() => state.dateKey.slice(0, 7));
   // Explicit tab choice, if any — falls back to the first slot once slots
   // have loaded, without needing an effect just to mirror that fallback.
@@ -191,7 +192,13 @@ function AvailabilityForm() {
     <form onSubmit={handleSubmit}>
       <label>
         老師
-        <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+        <select
+          value={teacherId}
+          onChange={(e) => {
+            setTeacherId(e.target.value);
+            saveMyTeacherId(e.target.value);
+          }}
+        >
           {state.teachers.map((t) => (
             <option key={t.id} value={t.id}>{t.name}</option>
           ))}
