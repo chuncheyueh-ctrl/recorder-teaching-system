@@ -23,6 +23,9 @@ export function uid(prefix: string): string {
 // pickers would render empty until someone edits them by hand.
 const DEFAULT_CONFIG: Required<AppConfig> = {
   group: ["初階", "中階", "大團", "社團課", "個別加強", "其他"],
+  // No sensible universal default — class codes are entirely school-specific
+  // and are meant to be seeded through 班級管理 (or an import) instead.
+  class: [],
   state: ["未完成", "部分完成", "已完成"],
   eventType: ["練習", "社團課", "加練", "考試／考核", "演出", "停課", "行政提醒", "其他"],
   issue: ["節奏", "音準", "指法", "換氣", "音色", "速度", "合奏聆聽", "看譜", "專注度"],
@@ -190,11 +193,37 @@ async function batchSaveAvailability(payload: Record<string, unknown>): Promise<
   return { ok: true, action: "availability.batchSave" };
 }
 
+interface ClassPromotion {
+  id: string;
+  className: string;
+}
+
+// End-of-year "everyone moves up a grade, same homeroom number" shortcut
+// (301 -> 401, etc). Writes every student's new className and the expanded
+// class-code list in one batch so a half-applied promotion can't happen.
+async function promoteStudentClasses(payload: Record<string, unknown>): Promise<ApiPostResult> {
+  const updates = Array.isArray(payload.updates) ? (payload.updates as ClassPromotion[]) : [];
+  if (updates.length === 0) return { ok: false, message: "沒有需要更新的學生" };
+  const classCodes = Array.isArray(payload.classCodes) ? (payload.classCodes as string[]) : undefined;
+
+  const batch = writeBatch(db);
+  updates.forEach(({ id, className }) => {
+    batch.set(doc(db, "students", id), { className }, { merge: true });
+  });
+  if (classCodes) batch.set(doc(db, "config", "app"), { class: classCodes }, { merge: true });
+  await batch.commit();
+  return { ok: true, action: "student.promoteClasses" };
+}
+
 export async function apiPost(payload: Record<string, unknown>): Promise<ApiPostResult> {
   const action = String(payload.action || "");
   try {
     if (action === "availability.batchSave") {
       return await batchSaveAvailability(payload);
+    }
+
+    if (action === "student.promoteClasses") {
+      return await promoteStudentClasses(payload);
     }
 
     if (action === "config.save") {

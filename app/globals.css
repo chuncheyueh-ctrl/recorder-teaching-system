@@ -153,6 +153,74 @@ h1 {
   gap: 12px;
   margin-top: 16px;
 }
+.classGroup {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 4px 14px;
+  background: #fffdf9;
+}
+.classGroup + .classGroup {
+  margin-top: 10px;
+}
+.classGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+.classGroupHead::-webkit-details-marker {
+  display: none;
+}
+.classGroupArrow {
+  display: inline-block;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.classGroup[open] .classGroupArrow {
+  transform: rotate(90deg);
+}
+.classGroupLabel {
+  font-weight: 900;
+  flex: 1;
+}
+.gradeGroup {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 4px 14px;
+  background: #fff7ef;
+}
+.gradeGroup + .gradeGroup {
+  margin-top: 10px;
+}
+.gradeGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 2px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 17px;
+}
+.gradeGroupHead::-webkit-details-marker {
+  display: none;
+}
+.gradeGroupArrow {
+  display: inline-block;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.gradeGroup[open] .gradeGroupArrow {
+  transform: rotate(90deg);
+}
+.gradeGroupLabel {
+  font-weight: 1000;
+  flex: 1;
+}
+.gradeGroupBody {
+  margin: 6px 0 14px;
+}
 .item {
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -709,6 +777,50 @@ dialog::backdrop {
   font-size: 13px;
   color: var(--muted);
   font-weight: 800;
+}
+
+/* ---- More page: category menu + back bar ---- */
+.moreMenuGroupTitle {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--muted);
+  padding-left: 2px;
+}
+.moreMenuRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 14px 16px;
+  background: #fff;
+  color: var(--ink);
+}
+.moreMenuLabel {
+  flex: 1;
+  font-weight: 900;
+}
+.moreMenuChevron {
+  color: var(--muted);
+}
+.moreBackBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  padding: 6px 2px;
+  color: var(--brand);
+  font-weight: 900;
+}
+.moreBackTitle {
+  margin-left: 8px;
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 1000;
 }
 
 /* ---- Avatars, time chips, status pills ---- */

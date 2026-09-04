@@ -32,9 +32,11 @@ function StudentForm({ target }: { target: { id?: string } }) {
   const existing = target.id ? state.students.find((s) => s.id === target.id) : undefined;
   const [name, setName] = useState(existing?.name || "");
   const [grade, setGrade] = useState(existing?.grade || "");
+  const [className, setClassName] = useState(existing?.className || "");
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => parseGroups(existing?.groups || ""));
   const [note, setNote] = useState(existing?.note || "");
   const groupOptions = state.config.group || [];
+  const classOptions = state.config.class || [];
 
   function toggleGroup(name: string) {
     setSelectedGroups((prev) => {
@@ -48,7 +50,7 @@ function StudentForm({ target }: { target: { id?: string } }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const groups = Array.from(selectedGroups).join(",");
-    const item: Student = { id: target.id || uid("student"), name, grade, groups, note };
+    const item: Student = { id: target.id || uid("student"), name, grade, className, groups, note };
     save("student.save", { ...item }, {
       localUpdate: (prev) => ({ ...prev, students: prev.students.filter((s) => s.id !== item.id).concat([item]) }),
       reloadDelayMs: 1200,
@@ -61,6 +63,18 @@ function StudentForm({ target }: { target: { id?: string } }) {
       <div className="formGrid">
         <label>姓名<input value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label>年級<input value={grade} onChange={(e) => setGrade(e.target.value)} /></label>
+        <label>
+          班級
+          <select value={className} onChange={(e) => setClassName(e.target.value)}>
+            <option value="">（未分班）</option>
+            {classOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          {classOptions.length === 0 && (
+            <span className="sub">尚未建立任何班級，請先到「更多」頁的「班級管理」新增。</span>
+          )}
+        </label>
         <label className="full">
           所屬團別（可複選，例如同時是社團又個別加強）
           {groupOptions.length === 0 ? (

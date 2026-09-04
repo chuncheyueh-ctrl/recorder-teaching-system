@@ -8,6 +8,8 @@ export interface Student {
   id: string;
   name: string;
   grade?: string;
+  /** Homeroom class code, e.g. "301" — one per student, managed in AppConfig.class. */
+  className?: string;
   groups?: string;
   note?: string;
 }
@@ -76,6 +78,7 @@ export interface CalendarEvent {
 
 export interface AppConfig {
   group?: string[];
+  class?: string[];
   state?: string[];
   eventType?: string[];
   issue?: string[];
