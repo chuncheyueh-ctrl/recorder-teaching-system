@@ -58,6 +58,9 @@ interface SaveOptions {
 export interface RecordDialogTarget {
   slotId?: string;
   recordId?: string;
+  /** Which teacher's session within the slot this is — a slot can have
+   * several teachers each covering a different group at the same time. */
+  teacherId?: string;
 }
 
 interface DialogsState {

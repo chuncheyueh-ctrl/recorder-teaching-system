@@ -59,7 +59,7 @@ function slotsForForm(slots: Slot[], dateKey: string, mustInclude?: string): Slo
   return matching;
 }
 
-function RecordForm({ target }: { target: { slotId?: string; recordId?: string } }) {
+function RecordForm({ target }: { target: { slotId?: string; recordId?: string; teacherId?: string } }) {
   const { state, closeDialogs, save } = useAppState();
   const existing = target.recordId ? state.records.find((r) => r.id === target.recordId) : undefined;
   const initialDateKey = existing?.dateKey || state.dateKey;
@@ -77,7 +77,7 @@ function RecordForm({ target }: { target: { slotId?: string; recordId?: string }
     dateKey: initialDateKey,
     slotId: initialSlotId,
     groupName: existing?.groupName || state.config.group?.[0] || "",
-    teacherId: existing?.teacherId || pickDefaultTeacherId(state.teachers),
+    teacherId: existing?.teacherId || target.teacherId || pickDefaultTeacherId(state.teachers),
     studentIds: existing?.studentIds || [],
     focusStudentIds: existing?.focusStudentIds || [],
     focusTags: existing?.focusTags || [],
