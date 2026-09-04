@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AppStateProvider } from "@/state/app-state-provider";
@@ -13,6 +13,15 @@ const openhuninn = localFont({
 export const metadata: Metadata = {
   title: "中正國小直笛團｜教師工作台",
   description: "V22.1 Fast Save 教師工作台",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Lets the page paint under the notch/home-indicator safe areas instead of
+  // being letterboxed by them — combined with env(safe-area-inset-*) on the
+  // fixed tab bar/FAB/toast below so nothing sits under the home indicator.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

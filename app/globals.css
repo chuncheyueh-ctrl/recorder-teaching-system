@@ -54,7 +54,7 @@ button.danger {
   border: 0;
 }
 button.small {
-  padding: 8px 12px;
+  padding: 10px 14px;
   font-size: 14px;
 }
 input,
@@ -80,7 +80,7 @@ label {
 .app {
   max-width: 980px;
   margin: auto;
-  padding: 24px 18px 108px;
+  padding: 24px 18px calc(108px + env(safe-area-inset-bottom));
 }
 .top {
   display: flex;
@@ -259,7 +259,7 @@ h1 {
 .tabs {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   width: min(92vw, 640px);
   background: rgba(255, 255, 255, 0.92);
@@ -284,7 +284,7 @@ h1 {
 .fab {
   position: fixed;
   right: 22px;
-  bottom: 92px;
+  bottom: calc(92px + env(safe-area-inset-bottom));
   z-index: 60;
 }
 .weekChips {
@@ -550,7 +550,7 @@ dialog::backdrop {
 .toast {
   position: fixed;
   left: 20px;
-  bottom: 92px;
+  bottom: calc(92px + env(safe-area-inset-bottom));
   background: #2b211d;
   color: #fff;
   border-radius: 999px;
@@ -569,7 +569,7 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
   .app {
-    padding: 18px 14px 108px;
+    padding: 18px 14px calc(108px + env(safe-area-inset-bottom));
   }
   .card {
     padding: 18px;
@@ -649,10 +649,10 @@ dialog::backdrop {
   font-weight: 1000;
 }
 .dateNav .navBtn {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   background: #fff;

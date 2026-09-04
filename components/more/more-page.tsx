@@ -141,7 +141,7 @@ function TeacherManager() {
               <b>{t.name}</b>
               <div className="sub">{t.note || ""}</div>
             </div>
-            <div className="row" style={{ gap: 6 }}>
+            <div className="row" style={{ gap: 10 }}>
               <button className="small" type="button" onClick={() => openTeacherDialog(t.id)}><Pencil size={14} /></button>
               <button className="small danger" type="button" onClick={() => deleteTeacher(t.id)}><Trash2 size={14} /></button>
             </div>
@@ -179,7 +179,7 @@ function SlotManager() {
               <b>{s.name}</b>
               <div className="sub">{timeRange(s.start, s.end)}｜{weekdayLabel(s.weekdays)}</div>
             </div>
-            <div className="row" style={{ gap: 6 }}>
+            <div className="row" style={{ gap: 10 }}>
               <button className="small" type="button" onClick={() => openSlotDialog(s.id)}><Pencil size={14} /></button>
               <button className="small danger" type="button" onClick={() => deleteSlot(s.id)}><Trash2 size={14} /></button>
             </div>
@@ -350,7 +350,7 @@ function StudentManager() {
                           <b>{s.name}</b>
                           <div className="sub">{[s.grade, s.groups].filter(Boolean).join("｜")}</div>
                         </div>
-                        <div className="row" style={{ gap: 6 }}>
+                        <div className="row" style={{ gap: 10 }}>
                           <button className="small" type="button" onClick={() => openStudentDialog(s.id)}><Pencil size={14} /></button>
                           <button className="small danger" type="button" onClick={() => deleteStudent(s.id)}><Trash2 size={14} /></button>
                         </div>
