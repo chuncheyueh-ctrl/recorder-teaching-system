@@ -604,6 +604,20 @@ dialog::backdrop {
   place-items: center;
   color: var(--ink);
 }
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.titleLogo {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: var(--shadow);
+  object-fit: cover;
+}
 .pageTitle {
   font-size: 38px;
   line-height: 1.05;
@@ -990,6 +1004,11 @@ dialog::backdrop {
 @media (max-width: 420px) {
   .pageTitle {
     font-size: 30px;
+  }
+  .titleLogo {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
   }
   .courseGrid {
     grid-template-columns: 1fr;

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Bell, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { addDays, displayDate, toDateKey } from "@/lib/date-utils";
@@ -16,7 +17,10 @@ export function TopBar() {
         </button>
       </div>
 
-      <h1 className="pageTitle">中正國小直笛團</h1>
+      <div className="titleRow">
+        <Image src="/logo.png" alt="" width={64} height={64} className="titleLogo" priority />
+        <h1 className="pageTitle">中正國小直笛團</h1>
+      </div>
 
       <div className="titleMeta">
         <div>
