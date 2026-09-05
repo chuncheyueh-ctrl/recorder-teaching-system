@@ -22,14 +22,17 @@ export async function GET(req: NextRequest) {
     note: sp.get("note") || "",
   };
   const ics = buildIcs(event);
-  return new Response(ics, {
+  // Serialize to bytes ourselves so we can send a real Content-Length —
+  // returning a plain string here gets sent chunked (no Content-Length) by
+  // both `next dev` and Vercel's Node runtime, and iOS Safari's download
+  // manager throws "Safari 無法下載此檔案" when it can't learn the file
+  // size upfront.
+  const body = new TextEncoder().encode(ics);
+  return new Response(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      // "attachment" forces iOS Safari's generic file-download flow, which
-      // is exactly the "Safari 無法下載此檔案" error this has been hitting
-      // — iOS Safari's native add-to-calendar recognition only fires when
-      // it renders the text/calendar body inline, not as a download.
       "Content-Disposition": 'inline; filename="event.ics"',
+      "Content-Length": String(body.byteLength),
     },
   });
 }
