@@ -65,7 +65,12 @@ function icsRouteUrl(event: CalendarEvent): string {
   });
   if (event.location) params.set("location", event.location);
   if (event.note) params.set("note", event.note);
-  return `/api/ics?${params.toString()}`;
+  // The path itself has to end in .ics — iOS Safari's file-type
+  // recognition for triggering the calendar-add flow looks at the URL's
+  // extension, not just the Content-Type header, and a query-string-only
+  // endpoint (no .ics in the path) was consistently hitting "Safari 無法
+  // 下載此檔案" even with every response header already verified correct.
+  return `/api/ics/event.ics?${params.toString()}`;
 }
 
 /**
