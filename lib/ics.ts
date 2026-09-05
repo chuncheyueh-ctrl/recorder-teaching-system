@@ -27,6 +27,11 @@ export function buildIcs(event: CalendarEvent): string {
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//中正國小直笛團//教師工作台//ZH",
+    // Technically optional per RFC 5545, but commonly required in practice
+    // for iOS to accept a client-generated .ics as a real importable event
+    // rather than rejecting it outright.
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:${event.id}@recorder-teaching`,
     `DTSTAMP:${icsTimestampUtc()}`,
@@ -63,6 +68,16 @@ function icsRouteUrl(event: CalendarEvent): string {
   return `/api/ics?${params.toString()}`;
 }
 
+function icsWebcalUrl(event: CalendarEvent): string {
+  // webcal: hands the resource straight to Calendar.app via iOS's own
+  // URL-scheme handler, bypassing Safari's download engine entirely — that
+  // engine is what's been throwing "Safari 無法下載此檔案" regardless of
+  // Content-Type/Content-Disposition/Content-Length, all of which were
+  // independently confirmed correct against the deployed endpoint. iOS
+  // fetches the resource over https under the hood despite the scheme name.
+  return `webcal://${window.location.host}${icsRouteUrl(event)}`;
+}
+
 /**
  * Downloads a single event as a .ics file — tapping it on a phone opens the
  * native "add to calendar" flow, no backend or calendar-account integration
@@ -70,15 +85,7 @@ function icsRouteUrl(event: CalendarEvent): string {
  */
 export function downloadEventIcs(event: CalendarEvent) {
   if (isIOSSafari()) {
-    // Both client-only tricks tried before this turned out to be dead ends
-    // on iOS Safari: a data: URI gets its top-level navigation silently
-    // blocked (anti-phishing), and a blob: URL navigation hits the same
-    // "Safari 無法下載此檔案" error as <a download> did originally — blob
-    // URLs are scoped to the page that created them and don't survive a
-    // real navigation. The only technique that reliably triggers iOS's
-    // native add-to-calendar sheet is navigating to an actual HTTP resource
-    // with a real text/calendar Content-Type, so /api/ics serves that.
-    window.location.href = icsRouteUrl(event);
+    window.location.href = icsWebcalUrl(event);
     return;
   }
 
