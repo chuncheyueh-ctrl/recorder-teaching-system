@@ -24,7 +24,8 @@ function EventForm({ target }: { target: { id?: string; defaultType?: string } }
   const { state, closeDialogs, save } = useAppState();
   const existing = target.id ? state.events.find((e) => e.id === target.id) : undefined;
 
-  const [dateKey, setDateKey] = useState(existing?.dateKey || state.dateKey);
+  const [dateKey, setDateKeyState] = useState(existing?.dateKey || state.dateKey);
+  const [endDateKey, setEndDateKey] = useState(existing?.endDateKey || existing?.dateKey || "");
   const [type, setType] = useState(existing?.type || target.defaultType || state.config.eventType?.[0] || "");
   const [title, setTitle] = useState(existing?.title || "");
   const [start, setStart] = useState(existing?.start || "");
@@ -40,6 +41,13 @@ function EventForm({ target }: { target: { id?: string; defaultType?: string } }
   const isPerformance = type === PERFORMANCE_TYPE;
   const groupOptions = state.config.group || [];
 
+  // Changing the start date shouldn't leave a stale end date sitting
+  // before it — nudge the end date forward along with it when that happens.
+  function handleDateChange(next: string) {
+    setDateKeyState(next);
+    if (endDateKey && endDateKey < next) setEndDateKey(next);
+  }
+
   function toggleGroup(name: string) {
     setPerformingGroups((prev) => {
       const next = new Set(prev);
@@ -51,9 +59,11 @@ function EventForm({ target }: { target: { id?: string; defaultType?: string } }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const finalEndDateKey = endDateKey && endDateKey >= dateKey ? endDateKey : dateKey;
     const item: CalendarEvent = {
       id: target.id || uid("event"),
       dateKey,
+      endDateKey: finalEndDateKey,
       title,
       type,
       start,
@@ -80,7 +90,12 @@ function EventForm({ target }: { target: { id?: string; defaultType?: string } }
   return (
     <form onSubmit={handleSubmit}>
       <div className="formGrid">
-        <label>日期<input type="date" value={dateKey} onChange={(e) => setDateKey(e.target.value)} /></label>
+        <label>開始日期<input type="date" value={dateKey} onChange={(e) => handleDateChange(e.target.value)} /></label>
+        <label>
+          結束日期（選填）
+          <input type="date" value={endDateKey} min={dateKey} onChange={(e) => setEndDateKey(e.target.value)} />
+          <span className="sub">連續多天的活動才需要填寫，例如報名期間、比賽週</span>
+        </label>
         <label>
           類型
           <select value={type} onChange={(e) => setType(e.target.value)}>
@@ -90,8 +105,8 @@ function EventForm({ target }: { target: { id?: string; defaultType?: string } }
           </select>
         </label>
         <label className="full">標題<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-        <label>開始<input value={start} onChange={(e) => setStart(e.target.value)} placeholder="08:00" /></label>
-        <label>結束<input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="16:00" /></label>
+        <label>開始時間<input value={start} onChange={(e) => setStart(e.target.value)} placeholder="08:00" /></label>
+        <label>結束時間<input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="16:00" /></label>
         <label className="full">地點<input value={location} onChange={(e) => setLocation(e.target.value)} /></label>
 
         {isPerformance && (

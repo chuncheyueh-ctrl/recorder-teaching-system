@@ -71,6 +71,10 @@ export interface LessonRecord {
 export interface CalendarEvent {
   id: string;
   dateKey: string;
+  /** Last day of a multi-day event (e.g. a 9/28–10/9 registration window),
+   * inclusive. Equal to dateKey for an ordinary single-day event — always
+   * set (never left undefined) so range checks don't need a fallback. */
+  endDateKey: string;
   title: string;
   type: string;
   start: string;

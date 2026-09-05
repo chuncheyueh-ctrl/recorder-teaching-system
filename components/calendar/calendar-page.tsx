@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, Star, Trash2 } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
-import { addMonths, calendarWeeks, displayDate, timeRange, toDateKey } from "@/lib/date-utils";
+import { addMonths, calendarWeeks, datesInRange, displayDate, timeRange, toDateKey } from "@/lib/date-utils";
 import { colorValueOf } from "@/lib/event-colors";
 import { downloadEventIcs } from "@/lib/ics";
 import type { CalendarEvent } from "@/lib/types";
@@ -22,11 +22,17 @@ export function CalendarPage() {
   const [month, setMonth] = useState(() => state.dateKey.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const monthEvents = state.events.filter((e) => e.dateKey.startsWith(month));
+  const monthStart = `${month}-01`;
+  const monthEnd = `${month}-31`;
+  // A multi-day event (e.g. a 9/28–10/9 registration window) counts as "in
+  // this month" if its range overlaps it at all, not just if it starts here.
+  const monthEvents = state.events.filter((e) => e.dateKey <= monthEnd && e.endDateKey >= monthStart);
   const eventsByDate = new Map<string, CalendarEvent[]>();
   monthEvents.forEach((e) => {
-    if (!eventsByDate.has(e.dateKey)) eventsByDate.set(e.dateKey, []);
-    eventsByDate.get(e.dateKey)!.push(e);
+    datesInRange(e.dateKey, e.endDateKey).forEach((d) => {
+      if (!eventsByDate.has(d)) eventsByDate.set(d, []);
+      eventsByDate.get(d)!.push(e);
+    });
   });
   const weeks = calendarWeeks(month);
   const today = toDateKey(new Date());
@@ -49,7 +55,9 @@ export function CalendarPage() {
             <b>{e.title}</b>
             <span className="pill">{e.type}</span>
           </div>
-          <div className="sub">{e.dateKey}｜{timeRange(e.start, e.end)}</div>
+          <div className="sub">
+            {e.endDateKey !== e.dateKey ? `${e.dateKey} ~ ${e.endDateKey}` : e.dateKey}｜{timeRange(e.start, e.end)}
+          </div>
           {e.location && (
             <div className="sub" style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <MapPin size={12} /> {e.location}

@@ -23,7 +23,13 @@ function normalizeApiResult(data: ApiGetResult): ApiGetResult {
     ...data,
     records: data.records?.map((r) => ({ ...r, dateKey: normalizeDateKey(r.dateKey) })),
     availability: data.availability?.map((a) => ({ ...a, dateKey: normalizeDateKey(a.dateKey) })),
-    events: data.events?.map((e) => ({ ...e, dateKey: normalizeDateKey(e.dateKey) })),
+    // endDateKey is a newer field — events written before it existed have
+    // none in Firestore, so fall back to dateKey (a same-day event) rather
+    // than leaving it empty.
+    events: data.events?.map((e) => {
+      const dateKey = normalizeDateKey(e.dateKey);
+      return { ...e, dateKey, endDateKey: normalizeDateKey(e.endDateKey) || dateKey };
+    }),
   };
 }
 

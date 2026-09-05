@@ -18,6 +18,13 @@ function countdownLabel(days: number): string {
   return `還有 ${days} 天`;
 }
 
+// A multi-day performance (rare, but the type isn't restricted to single
+// days) that's already started but hasn't ended reads oddly as "還有 -2 天".
+function performanceStatusLabel(e: { dateKey: string; endDateKey: string }, today: string): string {
+  if (today > e.dateKey && today <= e.endDateKey) return "進行中";
+  return countdownLabel(daysUntil(e.dateKey, today));
+}
+
 // A free-text status note, not a computed stat — "本週進度" for a recorder
 // ensemble means "祭典全團速度130", which no lesson-count number can say.
 function ProgressNote({ label, value, onSave }: { label: string; value: string; onSave: (text: string) => void }) {
@@ -72,7 +79,7 @@ export function AttentionCard() {
 
   const today = toDateKey(new Date());
   const upcomingPerformances = state.events
-    .filter((e) => e.type === PERFORMANCE_TYPE && e.dateKey >= today)
+    .filter((e) => e.type === PERFORMANCE_TYPE && e.endDateKey >= today)
     .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
     .slice(0, 3);
 
@@ -116,9 +123,11 @@ export function AttentionCard() {
               >
                 <div>
                   <b>{p.title || "（未命名表演）"}</b>
-                  <div className="sub">{displayDate(p.dateKey)}</div>
+                  <div className="sub">
+                    {p.endDateKey !== p.dateKey ? `${displayDate(p.dateKey)} ~ ${p.endDateKey}` : displayDate(p.dateKey)}
+                  </div>
                 </div>
-                <span className="statusPill pending">{countdownLabel(daysUntil(p.dateKey, today))}</span>
+                <span className="statusPill pending">{performanceStatusLabel(p, today)}</span>
               </div>
             ))}
           </div>

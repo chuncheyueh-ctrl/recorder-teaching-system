@@ -12,7 +12,7 @@ function icsEscape(s: string): string {
 
 function buildIcs(event: CalendarEvent): string {
   const start = icsDateTime(event.dateKey, event.start);
-  const end = icsDateTime(event.dateKey, event.end || event.start);
+  const end = icsDateTime(event.endDateKey || event.dateKey, event.end || event.start);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

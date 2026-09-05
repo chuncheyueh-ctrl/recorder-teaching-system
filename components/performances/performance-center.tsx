@@ -18,8 +18,10 @@ export function PerformanceCenter() {
   // day the 今日 page happens to be browsing, which shouldn't reclassify a
   // performance as past/upcoming just because someone paged around.
   const today = toDateKey(new Date());
-  const upcoming = performances.filter((p) => p.dateKey >= today);
-  const past = performances.filter((p) => p.dateKey < today).reverse();
+  // endDateKey (not dateKey) decides "past" so a multi-day performance
+  // that's already started still shows as upcoming/ongoing until it ends.
+  const upcoming = performances.filter((p) => p.endDateKey >= today);
+  const past = performances.filter((p) => p.endDateKey < today).reverse();
 
   async function handleDelete(id: string) {
     if (!confirm("刪除這場表演？")) return;
@@ -81,7 +83,9 @@ function PerformanceCard({ p, onEdit, onDelete }: { p: CalendarEvent; onEdit: ()
       <div className="row" style={{ alignItems: "flex-start", flexWrap: "nowrap" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <b>{p.title || "（未命名表演）"}</b>
-          <div className="sub">{displayDate(p.dateKey)}｜{timeRange(p.start, p.end)}</div>
+          <div className="sub">
+            {p.endDateKey !== p.dateKey ? `${displayDate(p.dateKey)} ~ ${p.endDateKey}` : displayDate(p.dateKey)}｜{timeRange(p.start, p.end)}
+          </div>
           {p.location && (
             <div className="sub" style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <MapPin size={12} /> {p.location}

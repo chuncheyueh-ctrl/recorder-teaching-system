@@ -56,6 +56,20 @@ export function addDays(key: string, n: number): string {
   return toDateKey(d);
 }
 
+/** Every "YYYY-MM-DD" from start to end, inclusive — used for multi-day
+ * calendar events, which need to show up on each day they span. */
+export function datesInRange(start: string, end: string): string[] {
+  const dates: string[] = [];
+  let cur = start;
+  // A safety cap, not a real limit — a malformed end before start would
+  // otherwise loop until addDays runs off into absurd dates.
+  for (let i = 0; i < 366 && cur <= end; i++) {
+    dates.push(cur);
+    cur = addDays(cur, 1);
+  }
+  return dates;
+}
+
 export function weekDates(key: string): string[] {
   const start = monday(key);
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
