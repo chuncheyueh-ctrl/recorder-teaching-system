@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowUpCircle,
@@ -32,6 +32,8 @@ const GROUP_CATEGORIES = [
   { key: "personal", label: "個別加強" },
 ];
 
+const SECTION_KEYS: SectionKey[] = ["teachers", "students", "slots", "class", "group", "performances", "attention"];
+
 interface MenuGroup {
   title: string;
   items: {
@@ -45,8 +47,20 @@ interface MenuGroup {
 }
 
 export function MorePage() {
-  const { state } = useAppState();
+  const { state, requestedMoreSection, clearRequestedMoreSection } = useAppState();
   const [section, setSection] = useState<SectionKey | null>(null);
+
+  // A link elsewhere in the app (e.g. 行事曆's "查看表演中心") can ask 更多
+  // to land directly on a specific section instead of the menu.
+  useEffect(() => {
+    if (!requestedMoreSection) return;
+    queueMicrotask(() => {
+      if ((SECTION_KEYS as string[]).includes(requestedMoreSection)) {
+        setSection(requestedMoreSection as SectionKey);
+      }
+      clearRequestedMoreSection();
+    });
+  }, [requestedMoreSection, clearRequestedMoreSection]);
 
   const groups: MenuGroup[] = [
     {

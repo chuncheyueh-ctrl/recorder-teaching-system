@@ -1,11 +1,11 @@
 "use client";
 
-import { CalendarDays, MapPin, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, MapPin, Plus, Star, Trash2 } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { timeRange } from "@/lib/date-utils";
 
 export function CalendarPage() {
-  const { state, openEventDialog, remove } = useAppState();
+  const { state, openEventDialog, remove, openMoreSection } = useAppState();
   // state.events now holds every event regardless of month (表演中心 needs
   // to see performances outside the currently-viewed month) — narrow to
   // this month here instead.
@@ -28,6 +28,9 @@ export function CalendarPage() {
           <Plus size={14} /> 新增事件
         </button>
       </div>
+      <button type="button" className="linkPill yellow" style={{ marginTop: 16 }} onClick={() => openMoreSection("performances")}>
+        <Star size={14} /> 查看表演中心
+      </button>
       <div className="list" style={{ marginTop: 16 }}>
         {monthEvents.length === 0 && <div className="empty">本月沒有事件。</div>}
         {monthEvents.map((e) => (

@@ -108,6 +108,11 @@ interface AppStateContextValue {
   openSlotDialog: (id?: string) => void;
   openEventDialog: (target?: EventDialogTarget) => void;
   closeDialogs: () => void;
+  /** Jump to the 更多 page with a specific section (e.g. "performances")
+   * already open, from anywhere else in the app (e.g. a link on 行事曆). */
+  requestedMoreSection: string | null;
+  openMoreSection: (section: string) => void;
+  clearRequestedMoreSection: () => void;
   /** Which teacher this device belongs to — "" until resolved from
    * localStorage post-mount, or if nobody's picked one yet. */
   myTeacherId: string;
@@ -122,6 +127,12 @@ const AppStateContext = createContext<AppStateContextValue | null>(null);
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => emptyState());
   const [page, setPage] = useState<PageKey>("today");
+  const [requestedMoreSection, setRequestedMoreSection] = useState<string | null>(null);
+  const openMoreSection = useCallback((section: string) => {
+    setPage("more");
+    setRequestedMoreSection(section);
+  }, []);
+  const clearRequestedMoreSection = useCallback(() => setRequestedMoreSection(null), []);
   const [loading, setLoading] = useState(false);
   const [toastState, setToastState] = useState<ToastState>({ message: "", visible: false });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -312,6 +323,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       openSlotDialog,
       openEventDialog,
       closeDialogs,
+      requestedMoreSection,
+      openMoreSection,
+      clearRequestedMoreSection,
       myTeacherId,
       myTeacherChecked,
       setMyTeacherId,
@@ -334,6 +348,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       openSlotDialog,
       openEventDialog,
       closeDialogs,
+      requestedMoreSection,
+      openMoreSection,
+      clearRequestedMoreSection,
       myTeacherId,
       myTeacherChecked,
       setMyTeacherId,
