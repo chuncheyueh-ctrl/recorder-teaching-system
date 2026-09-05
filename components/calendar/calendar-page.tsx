@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, MapPin, Plus, Star, Trash2 } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { addMonths, calendarWeeks, datesInRange, displayDate, timeRange, toDateKey } from "@/lib/date-utils";
-import { colorValueOf } from "@/lib/event-colors";
+import { bandBackground, colorValueOf } from "@/lib/event-colors";
 import { downloadEventIcs } from "@/lib/ics";
 import type { CalendarEvent } from "@/lib/types";
 
@@ -117,19 +117,16 @@ export function CalendarPage() {
                 {week.map((d, di) => {
                   if (!d) return <td key={di} className="calBlank" />;
                   const dayEvents = eventsByDate.get(d) || [];
+                  const fill = bandBackground(dayEvents.map((e) => colorOf(e.type)));
                   return (
                     <td key={di}>
                       <button
                         type="button"
-                        className={`eventCalCell${d === today ? " today" : ""}${d === selectedDate ? " active" : ""}`}
+                        className={`eventCalCell${d === today ? " today" : ""}${d === selectedDate ? " active" : ""}${dayEvents.length > 0 ? " filled" : ""}`}
+                        style={fill ? { background: fill } : undefined}
                         onClick={() => setSelectedDate(d === selectedDate ? null : d)}
                       >
                         <span className="eventCalDate">{Number(d.slice(-2))}</span>
-                        <span className="eventCalDots">
-                          {dayEvents.slice(0, 4).map((e) => (
-                            <span key={e.id} className="eventDot" style={{ background: colorOf(e.type) }} />
-                          ))}
-                        </span>
                       </button>
                     </td>
                   );

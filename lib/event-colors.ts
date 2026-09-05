@@ -15,3 +15,19 @@ export const EVENT_COLORS = [
 export function colorValueOf(key: string | undefined): string {
   return EVENT_COLORS.find((c) => c.key === key)?.value || EVENT_COLORS[0].value;
 }
+
+/**
+ * A CSS background filling a day cell with one hard-edged band per color —
+ * one event fills the whole cell, two split it in half, three in thirds,
+ * and so on, instead of a single small dot regardless of how many there are.
+ */
+export function bandBackground(colors: string[]): string {
+  if (colors.length === 0) return "";
+  if (colors.length === 1) return colors[0];
+  const step = 100 / colors.length;
+  const stops: string[] = [];
+  colors.forEach((c, i) => {
+    stops.push(`${c} ${i * step}%`, `${c} ${(i + 1) * step}%`);
+  });
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
