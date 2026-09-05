@@ -57,23 +57,26 @@ function isIOSSafari(): boolean {
 export function downloadEventIcs(event: CalendarEvent) {
   const ics = buildIcs(event);
   const filename = `${event.title || "event"}.ics`;
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
 
   if (isIOSSafari()) {
     // iOS Safari has no generic "download this blob" support — an
     // <a download> pointing at a blob: URL fails with "Safari 無法下載此
     // 檔案". It only recognizes text/calendar and opens the native
-    // add-to-calendar sheet on an actual top-level navigation — opening the
-    // data: URI in a new tab (target=_blank) instead just shows the raw
-    // text, so this has to be a real location change, not a new tab.
-    // DTSTAMP above makes every payload unique even for the same event, so
-    // re-assigning to "the same" href twice never happens — an identical
-    // href is a no-op in Safari, which was silently swallowing repeat taps.
-    window.location.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+    // add-to-calendar sheet on an actual top-level navigation, which rules
+    // out target=_blank (just shows the raw text). A data: URI seemed like
+    // the standard trick here, but Safari now silently blocks top-level
+    // navigation to data: URLs outright (anti-phishing) — nothing happens
+    // at all, no error. blob: URLs aren't subject to that block and still
+    // get the same content-type recognition on direct navigation.
+    window.location.href = url;
+    // Deliberately not revoking this one — the navigation/sheet can still
+    // be reading it after this function returns, and it's a few hundred
+    // bytes; not worth risking pulling it out from under Safari.
     return;
   }
 
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
