@@ -30,20 +30,41 @@ function buildIcs(event: CalendarEvent): string {
   return lines.filter(Boolean).join("\r\n");
 }
 
+function isIOSSafari(): boolean {
+  const ua = navigator.userAgent;
+  // iPadOS 13+ reports as "Macintosh" but still has touch support, unlike
+  // an actual Mac — that's the standard way to tell them apart.
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
+  return isIOS;
+}
+
 /**
  * Downloads a single event as a .ics file — tapping it on a phone opens the
- * native "add to calendar" flow (iOS Safari especially), no backend or
- * calendar-account integration needed.
+ * native "add to calendar" flow, no backend or calendar-account integration
+ * needed.
  */
 export function downloadEventIcs(event: CalendarEvent) {
   const ics = buildIcs(event);
+  const filename = `${event.title || "event"}.ics`;
+
+  if (isIOSSafari()) {
+    // iOS Safari has no generic "download this blob" support — an
+    // <a download> pointing at a blob: URL fails with "Safari 無法下載此
+    // 檔案". Navigating straight to a data: URI instead lets it recognize
+    // the text/calendar type and open the native add-to-calendar sheet.
+    window.location.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+    return;
+  }
+
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${event.title || "event"}.ics`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Revoking immediately can race the browser actually starting the
+  // download on some platforms — give it a moment first.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
