@@ -10,6 +10,16 @@ function icsEscape(s: string): string {
   return (s || "").replace(/[\\,;]/g, (m) => "\\" + m).replace(/\n/g, "\\n");
 }
 
+// RFC 5545 requires DTSTAMP on every VEVENT (when this .ics was generated,
+// not the event's own time) — we'd been omitting it. Using "now" also means
+// the payload for the same event is never byte-identical twice, which
+// matters for how it gets opened (see downloadEventIcs below).
+function icsTimestampUtc(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+}
+
 function buildIcs(event: CalendarEvent): string {
   const start = icsDateTime(event.dateKey, event.start);
   const end = icsDateTime(event.endDateKey || event.dateKey, event.end || event.start);
@@ -19,6 +29,7 @@ function buildIcs(event: CalendarEvent): string {
     "PRODID:-//中正國小直笛團//教師工作台//ZH",
     "BEGIN:VEVENT",
     `UID:${event.id}@recorder-teaching`,
+    `DTSTAMP:${icsTimestampUtc()}`,
     `DTSTART:${start}`,
     `DTEND:${end}`,
     `SUMMARY:${icsEscape(event.title)}`,
@@ -50,18 +61,14 @@ export function downloadEventIcs(event: CalendarEvent) {
   if (isIOSSafari()) {
     // iOS Safari has no generic "download this blob" support — an
     // <a download> pointing at a blob: URL fails with "Safari 無法下載此
-    // 檔案". A data: URI opened in a new tab lets it recognize the
-    // text/calendar type and open the native add-to-calendar sheet instead.
-    // (Setting window.location.href directly works once, but Safari treats
-    // re-assigning it to an identical string — the same event clicked again
-    // — as a no-op, so the second tap silently does nothing.)
-    const a = document.createElement("a");
-    a.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // 檔案". It only recognizes text/calendar and opens the native
+    // add-to-calendar sheet on an actual top-level navigation — opening the
+    // data: URI in a new tab (target=_blank) instead just shows the raw
+    // text, so this has to be a real location change, not a new tab.
+    // DTSTAMP above makes every payload unique even for the same event, so
+    // re-assigning to "the same" href twice never happens — an identical
+    // href is a no-op in Safari, which was silently swallowing repeat taps.
+    window.location.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
     return;
   }
 
