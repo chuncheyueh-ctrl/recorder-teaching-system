@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, ClipboardCheck, ClipboardList, Circle, UserRound, Users } from "lucide-react";
+import { Check, ChevronRight, ClipboardCheck, ClipboardList, Circle, Users } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { slotsForDate, timeRange } from "@/lib/date-utils";
 import { AttentionCard } from "@/components/today/attention-card";
@@ -43,20 +43,6 @@ export function TodayPage() {
   const sessionDoneCount = slotSessions.reduce((n, x) => n + x.sessions.filter((sx) => sx.record).length, 0);
   const handoffs = rec.filter((r) => r.handoff);
   const teacherCount = new Set(av.map((a) => a.teacherId)).size;
-
-  // A lesson record covers a whole group (groupName), not individual
-  // students, so "who hasn't been covered today" is derived by matching a
-  // student's group memberships against today's completed records' groups.
-  const coveredGroups = new Set(rec.map((r) => r.groupName).filter(Boolean));
-  const absentStudents = state.students.filter((s) => {
-    const groups = (s.groups || "").split(",").map((g) => g.trim()).filter(Boolean);
-    if (groups.length === 0) return true;
-    return !groups.some((g) => coveredGroups.has(g));
-  });
-  const groupCounts = (state.config.group || []).map((g) => ({
-    name: g,
-    count: absentStudents.filter((s) => (s.groups || "").split(",").map((x) => x.trim()).includes(g)).length,
-  }));
 
   return (
     <div className="grid">
@@ -206,34 +192,6 @@ export function TodayPage() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="sectionHead">
-          <div className="badgeCircle purple"><UserRound size={20} /></div>
-          <div className="sectionText">
-            <h2>未參與學生</h2>
-            <div className="sub">共 {state.students.length} 位學生</div>
-          </div>
-          <button className="linkPill purple" onClick={() => setPage("more")}>
-            查看名單 <ChevronRight size={14} />
-          </button>
-        </div>
-        <div style={{ marginTop: 14 }}>
-          {state.students.length === 0 ? (
-            <div className="empty">尚未建立學生名單。</div>
-          ) : absentStudents.length === 0 ? (
-            <div className="empty">今天已涵蓋的團別都有課程紀錄。</div>
-          ) : (
-            absentStudents.slice(0, 16).map((s) => <span className="pill" key={s.id}>{s.name}</span>)
-          )}
-        </div>
-        {groupCounts.length > 0 && (
-          <div className="groupPillRow">
-            {groupCounts.map((g) => (
-              <span className="groupPill" key={g.name}>{g.name} {g.count} 人</span>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

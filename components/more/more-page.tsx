@@ -10,6 +10,7 @@ import {
   GraduationCap,
   GripVertical,
   Layers,
+  Palette,
   Pencil,
   Plus,
   Star,
@@ -21,9 +22,10 @@ import { useAppState } from "@/state/app-state-provider";
 import { timeRange, weekdayLabel } from "@/lib/date-utils";
 import { PerformanceCenter } from "@/components/performances/performance-center";
 import { AttentionManager } from "@/components/attention/attention-manager";
+import { EventTypeManager } from "@/components/calendar/event-type-manager";
 import type { Student } from "@/lib/types";
 
-type SectionKey = "teachers" | "students" | "slots" | "class" | "group" | "performances" | "attention";
+type SectionKey = "teachers" | "students" | "slots" | "class" | "group" | "performances" | "attention" | "eventTypes";
 
 const GROUP_CATEGORIES = [
   { key: "team", label: "團別" },
@@ -32,7 +34,7 @@ const GROUP_CATEGORIES = [
   { key: "personal", label: "個別加強" },
 ];
 
-const SECTION_KEYS: SectionKey[] = ["teachers", "students", "slots", "class", "group", "performances", "attention"];
+const SECTION_KEYS: SectionKey[] = ["teachers", "students", "slots", "class", "group", "performances", "attention", "eventTypes"];
 
 interface MenuGroup {
   title: string;
@@ -83,6 +85,7 @@ export function MorePage() {
       title: "活動",
       items: [
         { key: "performances", label: "表演中心", icon: <Star size={20} />, tone: "yellow", count: state.events.filter((e) => e.type === "演出").length, unit: "場" },
+        { key: "eventTypes", label: "活動類別", icon: <Palette size={20} />, tone: "red", count: (state.config.eventType || []).length, unit: "個" },
       ],
     },
   ];
@@ -123,6 +126,7 @@ export function MorePage() {
         )}
         {section === "performances" && <PerformanceCenter />}
         {section === "attention" && <AttentionManager />}
+        {section === "eventTypes" && <EventTypeManager />}
       </div>
     );
   }

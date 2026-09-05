@@ -50,6 +50,16 @@ const DEFAULT_CONFIG: Required<AppConfig> = {
   class: [],
   state: ["未完成", "部分完成", "已完成"],
   eventType: ["練習", "社團課", "加練", "考試／考核", "演出", "停課", "行政提醒", "其他"],
+  eventTypeColor: {
+    練習: "blue",
+    社團課: "green",
+    加練: "blue",
+    "考試／考核": "gray",
+    演出: "yellow",
+    停課: "gray",
+    行政提醒: "purple",
+    其他: "gray",
+  },
   issue: ["節奏", "音準", "指法", "換氣", "音色", "速度", "合奏聆聽", "看譜", "專注度"],
   part: ["高音笛一部", "高音笛二部", "中音笛", "次中音笛", "低音笛", "個別學生", "臨時分組", "其他"],
   focus: ["跟不上", "節奏問題", "音準問題", "指法問題", "需要個別指導", "注意力不穩", "表現突出", "可帶領"],
@@ -245,6 +255,14 @@ async function promoteStudentClasses(payload: Record<string, unknown>): Promise<
 // the same moment — arrayUnion/arrayRemove are atomic on Firestore's side,
 // unlike config.save's whole-array overwrite, so neither edit can silently
 // clobber the other's.
+// Which sidecar map holds the "extra" per-item metadata for a given config
+// list — group names have a category (團別/聲部/社團/個別加強), event
+// types have a display color. Same add/rename mechanics either way.
+const CONFIG_CATEGORY_FIELD: Record<string, string> = {
+  group: "groupCategory",
+  eventType: "eventTypeColor",
+};
+
 async function addConfigItem(payload: Record<string, unknown>): Promise<ApiPostResult> {
   const key = String(payload.key || "");
   const value = String(payload.value || "");
@@ -252,8 +270,9 @@ async function addConfigItem(payload: Record<string, unknown>): Promise<ApiPostR
   if (!key || !value) return { ok: false, message: "缺少參數" };
   const data: Record<string, unknown> = { [key]: arrayUnion(value) };
   // Firestore's setDoc merge deep-merges nested maps, so this only ever
-  // touches this one key inside groupCategory, not the whole map.
-  if (key === "group" && category) data.groupCategory = { [value]: category };
+  // touches this one key inside the sidecar map, not the whole thing.
+  const categoryField = CONFIG_CATEGORY_FIELD[key];
+  if (categoryField && category) data[categoryField] = { [value]: category };
   await setDoc(doc(db, "config", "app"), data, { merge: true });
   return { ok: true, action: "config.addItem" };
 }
@@ -284,9 +303,10 @@ async function renameConfigItem(payload: Record<string, unknown>): Promise<ApiPo
 
   const batch = writeBatch(db);
   const configUpdate: Record<string, unknown> = { [key]: nextList };
-  if (key === "group") {
-    const categories = (configSnap.data() as { groupCategory?: Record<string, string> } | undefined)?.groupCategory || {};
-    if (categories[oldValue]) configUpdate.groupCategory = { [newValue]: categories[oldValue] };
+  const categoryField = CONFIG_CATEGORY_FIELD[key];
+  if (categoryField) {
+    const categories = (configSnap.data() as Record<string, Record<string, string>> | undefined)?.[categoryField] || {};
+    if (categories[oldValue]) configUpdate[categoryField] = { [newValue]: categories[oldValue] };
   }
   batch.set(doc(db, "config", "app"), configUpdate, { merge: true });
 

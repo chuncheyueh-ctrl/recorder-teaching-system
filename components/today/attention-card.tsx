@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AlertCircle, Pencil } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
-import { addDays, displayDate, parseDate, slotsForDate, toDateKey } from "@/lib/date-utils";
+import { displayDate, parseDate, toDateKey } from "@/lib/date-utils";
 
 const PERFORMANCE_TYPE = "演出";
 
@@ -76,15 +76,16 @@ export function AttentionCard() {
     .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
     .slice(0, 3);
 
-  const yesterday = addDays(state.dateKey, -1);
-  const yesterdayHadClasses = slotsForDate(state.slots, yesterday).length > 0;
-  const yesterdayCoveredGroups = new Set(
-    state.records.filter((r) => r.dateKey === yesterday).map((r) => r.groupName).filter(Boolean)
+  // A lesson record covers a whole group (groupName), not individual
+  // students, so "who hasn't been covered today" is derived by matching a
+  // student's group memberships against today's completed records' groups.
+  const todayCoveredGroups = new Set(
+    state.records.filter((r) => r.dateKey === state.dateKey).map((r) => r.groupName).filter(Boolean)
   );
-  const yesterdayAbsent = state.students.filter((s) => {
+  const todayAbsent = state.students.filter((s) => {
     const groups = (s.groups || "").split(",").map((g) => g.trim()).filter(Boolean);
     if (groups.length === 0) return true;
-    return !groups.some((g) => yesterdayCoveredGroups.has(g));
+    return !groups.some((g) => todayCoveredGroups.has(g));
   });
 
   const flagged = state.students.filter((s) => s.needsAttention);
@@ -124,20 +125,20 @@ export function AttentionCard() {
         </div>
       )}
 
-      {yesterdayHadClasses && (
-        <div style={{ marginTop: 16 }}>
-          <div className="sub" style={{ fontWeight: 900 }}>昨天未參與學生（{yesterdayAbsent.length}）</div>
-          {yesterdayAbsent.length === 0 ? (
-            <div className="empty" style={{ marginTop: 8 }}>昨天所有學生都有課程紀錄涵蓋。</div>
-          ) : (
-            <div style={{ marginTop: 8 }}>
-              {yesterdayAbsent.slice(0, 20).map((s) => (
-                <span className="pill" key={s.id}>{s.name}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <div style={{ marginTop: 16 }}>
+        <div className="sub" style={{ fontWeight: 900 }}>今天未參與學生（{todayAbsent.length}）</div>
+        {state.students.length === 0 ? (
+          <div className="empty" style={{ marginTop: 8 }}>尚未建立學生名單。</div>
+        ) : todayAbsent.length === 0 ? (
+          <div className="empty" style={{ marginTop: 8 }}>今天已涵蓋的團別都有課程紀錄。</div>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            {todayAbsent.slice(0, 20).map((s) => (
+              <span className="pill" key={s.id}>{s.name}</span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div style={{ marginTop: 16 }}>
         <div className="sub" style={{ fontWeight: 900 }}>能力需注意學生（{flagged.length}）</div>

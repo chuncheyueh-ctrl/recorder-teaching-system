@@ -1,8 +1,9 @@
 "use client";
 
-import { CalendarClock, MapPin, Pencil, Plus, Shirt, Star, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarPlus, MapPin, Pencil, Plus, Shirt, Star, Trash2 } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { displayDate, timeRange, toDateKey } from "@/lib/date-utils";
+import { downloadEventIcs } from "@/lib/ics";
 import type { CalendarEvent } from "@/lib/types";
 
 const PERFORMANCE_TYPE = "演出";
@@ -112,6 +113,7 @@ function PerformanceCard({ p, onEdit, onDelete }: { p: CalendarEvent; onEdit: ()
           )}
         </div>
         <div className="row" style={{ gap: 6, flexWrap: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+          <button className="small" type="button" onClick={() => downloadEventIcs(p)} aria-label="加入手機行事曆"><CalendarPlus size={14} /></button>
           <button className="small" type="button" onClick={onEdit}><Pencil size={14} /></button>
           <button className="small danger" type="button" onClick={onDelete}><Trash2 size={14} /></button>
         </div>

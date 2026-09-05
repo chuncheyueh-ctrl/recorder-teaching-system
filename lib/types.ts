@@ -98,6 +98,8 @@ export interface AppConfig {
   class?: string[];
   state?: string[];
   eventType?: string[];
+  /** Which color (see lib/event-colors.ts) each event type is drawn with on 行事曆. */
+  eventTypeColor?: Record<string, string>;
   issue?: string[];
   part?: string[];
   focus?: string[];

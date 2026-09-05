@@ -224,7 +224,7 @@ function AvailabilityForm() {
             </div>
           )}
 
-          <div className="availMonthNav">
+          <div className="monthNav">
             <button type="button" onClick={() => setMonth((m) => addMonths(m, -1))}>‹</button>
             <b>{monthLabel(month)}</b>
             <button type="button" onClick={() => setMonth((m) => addMonths(m, 1))}>›</button>
