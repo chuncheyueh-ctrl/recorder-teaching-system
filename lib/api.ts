@@ -55,6 +55,8 @@ const DEFAULT_CONFIG: Required<AppConfig> = {
   focus: ["跟不上", "節奏問題", "音準問題", "指法問題", "需要個別指導", "注意力不穩", "表現突出", "可帶領"],
   progressStage: ["未開始", "練習中", "可慢速完成", "可跟節拍器完成", "可合奏", "可演出"],
   stability: ["很不穩定", "偶爾成功", "多數可完成", "穩定完成"],
+  weekProgressNote: "",
+  monthProgressNote: "",
 };
 
 export interface ApiGetResult extends Partial<AppState> {

@@ -103,6 +103,10 @@ export interface AppConfig {
   focus?: string[];
   progressStage?: string[];
   stability?: string[];
+  /** Free-text status notes on the 今日 attention card — teachers write
+   * what actually happened ("祭典全團速度130"), not a lesson-count stat. */
+  weekProgressNote?: string;
+  monthProgressNote?: string;
 }
 
 export interface AppState {

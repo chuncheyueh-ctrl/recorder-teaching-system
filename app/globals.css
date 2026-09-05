@@ -1035,18 +1035,6 @@ dialog::backdrop {
   white-space: nowrap;
   text-align: right;
 }
-.progressTrack {
-  margin-top: 6px;
-  height: 10px;
-  border-radius: 999px;
-  background: #f3eee7;
-  overflow: hidden;
-}
-.progressFill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--brand2), var(--brand));
-}
 .groupPillRow {
   display: flex;
   flex-wrap: wrap;

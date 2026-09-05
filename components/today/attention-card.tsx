@@ -1,34 +1,80 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, Pencil } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
-import { addDays, monthDates, slotsForDate, weekDates } from "@/lib/date-utils";
+import { addDays, displayDate, parseDate, slotsForDate, toDateKey } from "@/lib/date-utils";
 
-function ProgressRow({ label, done, total }: { label: string; done: number; total: number }) {
-  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+const PERFORMANCE_TYPE = "演出";
+
+function daysUntil(dateKey: string, today: string): number {
+  const ms = parseDate(dateKey).getTime() - parseDate(today).getTime();
+  return Math.round(ms / 86400000);
+}
+
+function countdownLabel(days: number): string {
+  if (days <= 0) return "就是今天！";
+  if (days === 1) return "明天";
+  return `還有 ${days} 天`;
+}
+
+// A free-text status note, not a computed stat — "本週進度" for a recorder
+// ensemble means "祭典全團速度130", which no lesson-count number can say.
+function ProgressNote({ label, value, onSave }: { label: string; value: string; onSave: (text: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  if (editing) {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <div className="sub" style={{ fontWeight: 900 }}>{label}</div>
+        <textarea
+          autoFocus
+          style={{ marginTop: 6 }}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="例如：祭典全團速度130、微風清晨I段完成"
+        />
+        <div className="row" style={{ gap: 8, marginTop: 6, justifyContent: "flex-start" }}>
+          <button className="primary small" type="button" onClick={() => { onSave(draft.trim()); setEditing(false); }}>儲存</button>
+          <button className="small" type="button" onClick={() => { setDraft(value); setEditing(false); }}>取消</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ marginTop: 10 }}>
-      <div className="row" style={{ justifyContent: "space-between", fontSize: 14, fontWeight: 900 }}>
-        <span>{label}</span>
-        <span className="sub">{done} / {total} 堂課</span>
+    <div className="row" style={{ marginTop: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="sub" style={{ fontWeight: 900 }}>{label}</div>
+        <div style={{ marginTop: 4 }}>
+          {value ? value : <span className="sub">尚未填寫，點右邊編輯</span>}
+        </div>
       </div>
-      <div className="progressTrack">
-        <div className="progressFill" style={{ width: `${pct}%` }} />
-      </div>
+      <button className="small" type="button" onClick={() => { setDraft(value); setEditing(true); }}><Pencil size={14} /></button>
     </div>
   );
 }
 
 export function AttentionCard() {
-  const { state } = useAppState();
+  const { state, save, openMoreSection } = useAppState();
 
-  const week = weekDates(state.dateKey);
-  const weekDone = state.records.filter((r) => week.includes(r.dateKey)).length;
-  const weekTotal = week.reduce((n, d) => n + slotsForDate(state.slots, d).length, 0);
+  function saveWeekNote(text: string) {
+    save("config.save", { weekProgressNote: text }, {
+      localUpdate: (prev) => ({ ...prev, config: { ...prev.config, weekProgressNote: text } }),
+    });
+  }
+  function saveMonthNote(text: string) {
+    save("config.save", { monthProgressNote: text }, {
+      localUpdate: (prev) => ({ ...prev, config: { ...prev.config, monthProgressNote: text } }),
+    });
+  }
 
-  const monthDays = monthDates(state.month);
-  const monthDone = state.records.filter((r) => r.dateKey.startsWith(state.month)).length;
-  const monthTotal = monthDays.reduce((n, d) => n + slotsForDate(state.slots, d).length, 0);
+  const today = toDateKey(new Date());
+  const upcomingPerformances = state.events
+    .filter((e) => e.type === PERFORMANCE_TYPE && e.dateKey >= today)
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+    .slice(0, 3);
 
   const yesterday = addDays(state.dateKey, -1);
   const yesterdayHadClasses = slotsForDate(state.slots, yesterday).length > 0;
@@ -53,8 +99,30 @@ export function AttentionCard() {
         </div>
       </div>
 
-      <ProgressRow label="本週進度" done={weekDone} total={weekTotal} />
-      <ProgressRow label="本月進度" done={monthDone} total={monthTotal} />
+      <ProgressNote label="本週進度" value={state.config.weekProgressNote || ""} onSave={saveWeekNote} />
+      <ProgressNote label="本月進度" value={state.config.monthProgressNote || ""} onSave={saveMonthNote} />
+
+      {upcomingPerformances.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div className="sub" style={{ fontWeight: 900 }}>即將到來的表演</div>
+          <div className="list" style={{ marginTop: 8 }}>
+            {upcomingPerformances.map((p) => (
+              <div
+                className="item row"
+                key={p.id}
+                style={{ cursor: "pointer" }}
+                onClick={() => openMoreSection("performances")}
+              >
+                <div>
+                  <b>{p.title || "（未命名表演）"}</b>
+                  <div className="sub">{displayDate(p.dateKey)}</div>
+                </div>
+                <span className="statusPill pending">{countdownLabel(daysUntil(p.dateKey, today))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {yesterdayHadClasses && (
         <div style={{ marginTop: 16 }}>
