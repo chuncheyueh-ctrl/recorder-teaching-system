@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
   return new Response(ics, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="event.ics"',
+      // "attachment" forces iOS Safari's generic file-download flow, which
+      // is exactly the "Safari 無法下載此檔案" error this has been hitting
+      // — iOS Safari's native add-to-calendar recognition only fires when
+      // it renders the text/calendar body inline, not as a download.
+      "Content-Disposition": 'inline; filename="event.ics"',
     },
   });
 }
