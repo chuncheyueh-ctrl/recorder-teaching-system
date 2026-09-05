@@ -20,7 +20,7 @@ function icsTimestampUtc(): string {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
 }
 
-function buildIcs(event: CalendarEvent): string {
+export function buildIcs(event: CalendarEvent): string {
   const start = icsDateTime(event.dateKey, event.start);
   const end = icsDateTime(event.endDateKey || event.dateKey, event.end || event.start);
   const lines = [
@@ -49,34 +49,43 @@ function isIOSSafari(): boolean {
   return isIOS;
 }
 
+function icsRouteUrl(event: CalendarEvent): string {
+  const params = new URLSearchParams({
+    id: event.id,
+    title: event.title || "",
+    dateKey: event.dateKey,
+    endDateKey: event.endDateKey || event.dateKey,
+    start: event.start || "00:00",
+    end: event.end || event.start || "00:00",
+  });
+  if (event.location) params.set("location", event.location);
+  if (event.note) params.set("note", event.note);
+  return `/api/ics?${params.toString()}`;
+}
+
 /**
  * Downloads a single event as a .ics file — tapping it on a phone opens the
  * native "add to calendar" flow, no backend or calendar-account integration
  * needed.
  */
 export function downloadEventIcs(event: CalendarEvent) {
+  if (isIOSSafari()) {
+    // Both client-only tricks tried before this turned out to be dead ends
+    // on iOS Safari: a data: URI gets its top-level navigation silently
+    // blocked (anti-phishing), and a blob: URL navigation hits the same
+    // "Safari 無法下載此檔案" error as <a download> did originally — blob
+    // URLs are scoped to the page that created them and don't survive a
+    // real navigation. The only technique that reliably triggers iOS's
+    // native add-to-calendar sheet is navigating to an actual HTTP resource
+    // with a real text/calendar Content-Type, so /api/ics serves that.
+    window.location.href = icsRouteUrl(event);
+    return;
+  }
+
   const ics = buildIcs(event);
   const filename = `${event.title || "event"}.ics`;
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-
-  if (isIOSSafari()) {
-    // iOS Safari has no generic "download this blob" support — an
-    // <a download> pointing at a blob: URL fails with "Safari 無法下載此
-    // 檔案". It only recognizes text/calendar and opens the native
-    // add-to-calendar sheet on an actual top-level navigation, which rules
-    // out target=_blank (just shows the raw text). A data: URI seemed like
-    // the standard trick here, but Safari now silently blocks top-level
-    // navigation to data: URLs outright (anti-phishing) — nothing happens
-    // at all, no error. blob: URLs aren't subject to that block and still
-    // get the same content-type recognition on direct navigation.
-    window.location.href = url;
-    // Deliberately not revoking this one — the navigation/sheet can still
-    // be reading it after this function returns, and it's a few hundred
-    // bytes; not worth risking pulling it out from under Safari.
-    return;
-  }
-
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
