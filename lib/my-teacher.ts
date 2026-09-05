@@ -24,8 +24,13 @@ export function saveMyTeacherId(id: string) {
   }
 }
 
-export function pickDefaultTeacherId(teachers: { id: string }[]): string {
-  const remembered = loadMyTeacherId();
+/**
+ * `remembered` should come from the shared myTeacherId in app state (not a
+ * fresh loadMyTeacherId() call) so every consumer agrees on the same value
+ * the instant it changes, rather than each re-reading localStorage on its
+ * own schedule.
+ */
+export function pickDefaultTeacherId(teachers: { id: string }[], remembered: string): string {
   if (remembered && teachers.some((t) => t.id === remembered)) return remembered;
   return teachers[0]?.id || "";
 }

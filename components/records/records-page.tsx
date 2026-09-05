@@ -8,6 +8,9 @@ import { RecordCard } from "@/components/ui/record-card";
 export function RecordsPage() {
   const { state, changeDate } = useAppState();
   const days = weekDates(state.dateKey);
+  // state.records now spans a wider window (for the 今日 attention card's
+  // monthly/weekly progress) than just this week — narrow it back down here.
+  const weekRecords = state.records.filter((r) => days.includes(r.dateKey));
 
   return (
     <>
@@ -37,12 +40,12 @@ export function RecordsPage() {
         <div className="sectionHead">
           <div className="sectionText">
             <h2>本週所有紀錄</h2>
-            <div className="sub">共 {state.records.length} 筆</div>
+            <div className="sub">共 {weekRecords.length} 筆</div>
           </div>
         </div>
         <div className="list">
-          {state.records.length === 0 && <div className="empty">本週沒有紀錄。</div>}
-          {state.records.map((r) => (
+          {weekRecords.length === 0 && <div className="empty">本週沒有紀錄。</div>}
+          {weekRecords.map((r) => (
             <RecordCard key={r.id} record={r} />
           ))}
         </div>

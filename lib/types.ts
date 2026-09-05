@@ -12,6 +12,9 @@ export interface Student {
   className?: string;
   groups?: string;
   note?: string;
+  /** Flagged on the 需注意學生 list (managed from 更多), surfaced on the 今日 attention card. */
+  needsAttention?: boolean;
+  attentionNote?: string;
 }
 
 export interface Slot {
@@ -74,10 +77,24 @@ export interface CalendarEvent {
   end: string;
   location?: string;
   note?: string;
+  // Performance-specific (type === "演出") — kept optional so every other
+  // event type (排練/停課/行政提醒…) is unaffected.
+  /** 曲目：演出要演奏的曲子清單 */
+  repertoire?: string[];
+  /** 服裝 */
+  attire?: string;
+  /** 集合時間，通常早於表演開始時間 */
+  callTime?: string;
+  /** 集合地點，可能跟表演地點不同 */
+  callLocation?: string;
+  /** 參演團別 */
+  performingGroups?: string[];
 }
 
 export interface AppConfig {
   group?: string[];
+  /** Which sub-category (see GROUP_CATEGORIES) each group name belongs to, for display grouping in 團別管理 — not used for matching/filtering elsewhere. */
+  groupCategory?: Record<string, string>;
   class?: string[];
   state?: string[];
   eventType?: string[];

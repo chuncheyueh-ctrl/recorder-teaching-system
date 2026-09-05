@@ -6,6 +6,10 @@ import { timeRange } from "@/lib/date-utils";
 
 export function CalendarPage() {
   const { state, openEventDialog, remove } = useAppState();
+  // state.events now holds every event regardless of month (表演中心 needs
+  // to see performances outside the currently-viewed month) — narrow to
+  // this month here instead.
+  const monthEvents = state.events.filter((e) => e.dateKey.startsWith(state.month));
 
   async function handleDelete(id: string) {
     if (!confirm("刪除事件？")) return;
@@ -18,16 +22,16 @@ export function CalendarPage() {
         <div className="badgeCircle blue"><CalendarDays size={20} /></div>
         <div className="sectionText">
           <h2>行事曆</h2>
-          <div className="sub">共 {state.events.length} 則事件</div>
+          <div className="sub">共 {monthEvents.length} 則事件</div>
         </div>
         <button className="linkPill blue" onClick={() => openEventDialog()}>
           <Plus size={14} /> 新增事件
         </button>
       </div>
       <div className="list" style={{ marginTop: 16 }}>
-        {state.events.length === 0 && <div className="empty">本月沒有事件。</div>}
-        {state.events.map((e) => (
-          <div className="item row" key={e.id} onClick={() => openEventDialog(e.id)} style={{ cursor: "pointer" }}>
+        {monthEvents.length === 0 && <div className="empty">本月沒有事件。</div>}
+        {monthEvents.map((e) => (
+          <div className="item row" key={e.id} onClick={() => openEventDialog({ id: e.id })} style={{ cursor: "pointer" }}>
             <div>
               <div className="row" style={{ gap: 8, marginBottom: 4 }}>
                 <b>{e.title}</b>

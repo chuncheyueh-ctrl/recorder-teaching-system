@@ -14,12 +14,14 @@ import { TeacherDialog } from "@/components/dialogs/teacher-dialog";
 import { StudentDialog } from "@/components/dialogs/student-dialog";
 import { SlotDialog } from "@/components/dialogs/slot-dialog";
 import { EventDialog } from "@/components/dialogs/event-dialog";
+import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 
 export default function Home() {
   const { page } = useAppState();
 
   return (
     <div className="app">
+      <WelcomeScreen />
       <TopBar />
 
       {page === "today" && <TodayPage />}

@@ -1,24 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
+  AlertCircle,
   ArrowUpCircle,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
   GraduationCap,
+  GripVertical,
   Layers,
   Pencil,
   Plus,
+  Star,
   Tag,
   Trash2,
   Users,
 } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { timeRange, weekdayLabel } from "@/lib/date-utils";
+import { PerformanceCenter } from "@/components/performances/performance-center";
+import { AttentionManager } from "@/components/attention/attention-manager";
 import type { Student } from "@/lib/types";
 
-type SectionKey = "teachers" | "students" | "slots" | "class" | "group";
+type SectionKey = "teachers" | "students" | "slots" | "class" | "group" | "performances" | "attention";
+
+const GROUP_CATEGORIES = [
+  { key: "team", label: "團別" },
+  { key: "part", label: "聲部" },
+  { key: "club", label: "社團" },
+  { key: "personal", label: "個別加強" },
+];
 
 interface MenuGroup {
   title: string;
@@ -26,7 +38,7 @@ interface MenuGroup {
     key: SectionKey;
     label: string;
     icon: React.ReactNode;
-    tone: "green" | "purple" | "blue" | "red";
+    tone: "green" | "purple" | "blue" | "red" | "yellow";
     count: number;
     unit: string;
   }[];
@@ -42,6 +54,7 @@ export function MorePage() {
       items: [
         { key: "teachers", label: "老師管理", icon: <Users size={20} />, tone: "green", count: state.teachers.length, unit: "位" },
         { key: "students", label: "學生管理", icon: <GraduationCap size={20} />, tone: "purple", count: state.students.length, unit: "位" },
+        { key: "attention", label: "需注意學生", icon: <AlertCircle size={20} />, tone: "red", count: state.students.filter((s) => s.needsAttention).length, unit: "位" },
       ],
     },
     {
@@ -50,6 +63,12 @@ export function MorePage() {
         { key: "slots", label: "時段管理", icon: <CalendarClock size={20} />, tone: "blue", count: state.slots.length, unit: "個" },
         { key: "class", label: "班級管理", icon: <Layers size={20} />, tone: "red", count: (state.config.class || []).length, unit: "個" },
         { key: "group", label: "團別管理", icon: <Tag size={20} />, tone: "red", count: (state.config.group || []).length, unit: "個" },
+      ],
+    },
+    {
+      title: "活動",
+      items: [
+        { key: "performances", label: "表演中心", icon: <Star size={20} />, tone: "yellow", count: state.events.filter((e) => e.type === "演出").length, unit: "場" },
       ],
     },
   ];
@@ -85,8 +104,11 @@ export function MorePage() {
             emptyHint="尚無團別，新增後就能在學生資料裡用勾選指定。"
             countUsage={(state, name) => state.students.filter((s) => (s.groups || "").includes(name)).length}
             usageNoun="位學生屬於這個團別"
+            categories={GROUP_CATEGORIES}
           />
         )}
+        {section === "performances" && <PerformanceCenter />}
+        {section === "attention" && <AttentionManager />}
       </div>
     );
   }
@@ -367,6 +389,29 @@ function StudentManager() {
   );
 }
 
+interface ConfigCategory {
+  key: string;
+  label: string;
+}
+
+const OTHER_CATEGORY = "__other";
+
+// Moving an item within one section (category, or the whole list when there
+// are no categories) needs to preserve every other item's relative slot in
+// the underlying flat array — only the positions occupied by this section's
+// own items are allowed to change.
+function reorderSubset(full: string[], oldOrder: string[], newOrder: string[]): string[] {
+  const positions: number[] = [];
+  full.forEach((v, i) => {
+    if (oldOrder.includes(v)) positions.push(i);
+  });
+  const next = [...full];
+  positions.forEach((pos, idx) => {
+    next[pos] = newOrder[idx];
+  });
+  return next;
+}
+
 function ConfigListManager({
   configKey,
   title,
@@ -375,6 +420,7 @@ function ConfigListManager({
   emptyHint,
   countUsage,
   usageNoun,
+  categories,
 }: {
   configKey: "group" | "class";
   title: string;
@@ -383,20 +429,49 @@ function ConfigListManager({
   emptyHint: string;
   countUsage: (state: ReturnType<typeof useAppState>["state"], name: string) => number;
   usageNoun: string;
+  /** When given, items are grouped into these labeled sections (plus a
+   * catch-all "未分類" for anything not yet assigned) instead of one flat list. */
+  categories?: ConfigCategory[];
 }) {
   const { state, save } = useAppState();
   const items = state.config[configKey] || [];
   const [newItem, setNewItem] = useState("");
+  const [newCategory, setNewCategory] = useState(categories?.[0]?.key || "");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const dragRef = useRef<{ section: string; draggedKey: string } | null>(null);
+  const [liveOrder, setLiveOrder] = useState<{ section: string; order: string[] } | null>(null);
+
+  function categoryOf(name: string): string {
+    return state.config.groupCategory?.[name] || OTHER_CATEGORY;
+  }
+
+  function baseSectionItems(sectionKey: string): string[] {
+    if (!categories) return items;
+    if (sectionKey === OTHER_CATEGORY) {
+      const known = new Set(categories.map((c) => c.key));
+      return items.filter((name) => !known.has(categoryOf(name)));
+    }
+    return items.filter((name) => categoryOf(name) === sectionKey);
+  }
 
   function addItem() {
     const name = newItem.trim();
     if (!name || items.includes(name)) return;
-    save("config.addItem", { key: configKey, value: name }, {
-      localUpdate: (prev) => ({
-        ...prev,
-        config: { ...prev.config, [configKey]: [...(prev.config[configKey] || []), name] },
-      }),
-    });
+    save(
+      "config.addItem",
+      { key: configKey, value: name, ...(categories ? { category: newCategory } : {}) },
+      {
+        localUpdate: (prev) => ({
+          ...prev,
+          config: {
+            ...prev.config,
+            [configKey]: [...(prev.config[configKey] || []), name],
+            ...(categories ? { groupCategory: { ...prev.config.groupCategory, [name]: newCategory } } : {}),
+          },
+        }),
+      }
+    );
     setNewItem("");
   }
 
@@ -411,6 +486,137 @@ function ConfigListManager({
       }),
     });
   }
+
+  function startEdit(name: string) {
+    setEditing(name);
+    setEditValue(name);
+  }
+
+  function confirmRename(oldName: string) {
+    const name = editValue.trim();
+    setEditing(null);
+    if (!name || name === oldName) return;
+    if (items.includes(name)) {
+      alert(`「${name}」已經存在`);
+      return;
+    }
+    // Renaming has to update every student referencing the old name too, so
+    // it goes through a dedicated batch action rather than config.save.
+    save("config.renameItem", { key: configKey, oldValue: oldName, newValue: name }, {
+      localUpdate: (prev) => {
+        const nextList = (prev.config[configKey] || []).map((v) => (v === oldName ? name : v));
+        const nextStudents = prev.students.map((s) => {
+          if (configKey === "class") {
+            return s.className === oldName ? { ...s, className: name } : s;
+          }
+          const groups = (s.groups || "").split(",").map((g) => g.trim()).filter(Boolean);
+          if (!groups.includes(oldName)) return s;
+          return { ...s, groups: groups.map((g) => (g === oldName ? name : g)).join(",") };
+        });
+        const prevCategory = prev.config.groupCategory?.[oldName];
+        return {
+          ...prev,
+          config: {
+            ...prev.config,
+            [configKey]: nextList,
+            ...(prevCategory ? { groupCategory: { ...prev.config.groupCategory, [name]: prevCategory } } : {}),
+          },
+          students: nextStudents,
+        };
+      },
+    });
+  }
+
+  function startDrag(e: React.PointerEvent<HTMLButtonElement>, sectionKey: string, name: string) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { section: sectionKey, draggedKey: name };
+    setLiveOrder({ section: sectionKey, order: baseSectionItems(sectionKey) });
+  }
+
+  function handleDragMove(e: React.PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const rowEl = el?.closest("[data-drag-key]") as HTMLElement | null;
+    if (!rowEl) return;
+    const overKey = rowEl.getAttribute("data-drag-key")!;
+    const overSection = rowEl.getAttribute("data-drag-section")!;
+    if (overSection !== drag.section || overKey === drag.draggedKey) return;
+    setLiveOrder((prev) => {
+      const current = prev?.order || [];
+      const from = current.indexOf(drag.draggedKey);
+      const to = current.indexOf(overKey);
+      if (from === -1 || to === -1 || from === to) return prev;
+      const next = [...current];
+      next.splice(from, 1);
+      next.splice(to, 0, drag.draggedKey);
+      return { section: drag.section, order: next };
+    });
+  }
+
+  function handleDragEnd() {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag) return;
+    const finalOrder = liveOrder && liveOrder.section === drag.section ? liveOrder.order : null;
+    setLiveOrder(null);
+    if (!finalOrder) return;
+    const oldOrder = baseSectionItems(drag.section);
+    if (oldOrder.join("|") === finalOrder.join("|")) return;
+    const nextFull = reorderSubset(items, oldOrder, finalOrder);
+    save("config.save", { [configKey]: nextFull }, {
+      localUpdate: (prev) => ({ ...prev, config: { ...prev.config, [configKey]: nextFull } }),
+    });
+  }
+
+  function renderRow(name: string, sectionKey: string) {
+    if (editing === name) {
+      return (
+        <div className="item row" key={name}>
+          <input
+            autoFocus
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmRename(name);
+              }
+              if (e.key === "Escape") setEditing(null);
+            }}
+            style={{ flex: 1, minWidth: 120 }}
+          />
+          <div className="row" style={{ gap: 6 }}>
+            <button className="primary small" type="button" onClick={() => confirmRename(name)}>儲存</button>
+            <button className="small" type="button" onClick={() => setEditing(null)}>取消</button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="item row" key={name} data-drag-key={name} data-drag-section={sectionKey}>
+        <div className="row" style={{ gap: 10, flex: 1, justifyContent: "flex-start" }}>
+          <button
+            type="button"
+            className="dragHandle"
+            aria-label="拖曳排序"
+            onPointerDown={(e) => startDrag(e, sectionKey, name)}
+            onPointerMove={handleDragMove}
+            onPointerUp={handleDragEnd}
+          >
+            <GripVertical size={16} />
+          </button>
+          <b>{name}</b>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          <button className="small" type="button" onClick={() => startEdit(name)}><Pencil size={14} /></button>
+          <button className="small danger" type="button" onClick={() => deleteItem(name)}><Trash2 size={14} /></button>
+        </div>
+      </div>
+    );
+  }
+
+  const sectionDefs: ConfigCategory[] = categories ? [...categories, { key: OTHER_CATEGORY, label: "未分類" }] : [{ key: "__all", label: "" }];
 
   return (
     <div className="card">
@@ -433,19 +639,31 @@ function ConfigListManager({
           }}
           placeholder={placeholder}
         />
+        {categories && (
+          <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} style={{ maxWidth: 130 }}>
+            {categories.map((c) => (
+              <option key={c.key} value={c.key}>{c.label}</option>
+            ))}
+          </select>
+        )}
         <button className="primary small" type="button" onClick={addItem}>
           <Plus size={14} /> 新增
         </button>
       </div>
-      <div className="list" style={{ marginTop: 16 }}>
-        {items.length === 0 && <div className="empty">{emptyHint}</div>}
-        {items.map((g) => (
-          <div className="item row" key={g}>
-            <b>{g}</b>
-            <button className="small danger" type="button" onClick={() => deleteItem(g)}><Trash2 size={14} /></button>
+      {items.length === 0 && <div className="empty" style={{ marginTop: 16 }}>{emptyHint}</div>}
+      {sectionDefs.map(({ key: sectionKey, label }) => {
+        const base = baseSectionItems(sectionKey);
+        if (categories && base.length === 0) return null;
+        const display = liveOrder && liveOrder.section === sectionKey ? liveOrder.order : base;
+        return (
+          <div key={sectionKey} style={{ marginTop: label ? 20 : 16 }}>
+            {label && <div className="moreMenuGroupTitle">{label}</div>}
+            <div className="list" style={{ marginTop: label ? 10 : 0 }}>
+              {display.map((name) => renderRow(name, sectionKey))}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }

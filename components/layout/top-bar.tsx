@@ -6,8 +6,9 @@ import { useAppState } from "@/state/app-state-provider";
 import { addDays, displayDate, toDateKey } from "@/lib/date-utils";
 
 export function TopBar() {
-  const { state, changeDate, openRecordDialog, toast } = useAppState();
+  const { state, changeDate, openRecordDialog, toast, myTeacherId } = useAppState();
   const isToday = state.dateKey === toDateKey(new Date());
+  const myTeacherName = state.teachers.find((t) => t.id === myTeacherId)?.name;
 
   return (
     <>
@@ -50,6 +51,7 @@ export function TopBar() {
             )}
           </div>
         </div>
+        {myTeacherName && <div className="myTeacherGreeting">歡迎 {myTeacherName} 老師～</div>}
         <button className="quickAddBtn" onClick={() => openRecordDialog()}>
           <Plus size={16} /> 快速新增
         </button>

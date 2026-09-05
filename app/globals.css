@@ -636,6 +636,12 @@ dialog::backdrop {
   color: var(--brand);
   font-weight: 900;
 }
+.myTeacherGreeting {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--ink);
+  white-space: nowrap;
+}
 .dateNav {
   display: flex;
   align-items: center;
@@ -745,6 +751,14 @@ dialog::backdrop {
   background: #e4ecfb;
   color: #4b6fbd;
 }
+.linkPill.yellow {
+  background: #fff3d7;
+  color: #9a6510;
+}
+.badgeCircle.yellow {
+  background: #fff3d7;
+  color: #9a6510;
+}
 .badgeCircle.blue {
   background: #e4ecfb;
   color: #4b6fbd;
@@ -808,6 +822,23 @@ dialog::backdrop {
 }
 .moreMenuChevron {
   color: var(--muted);
+}
+.dragHandle {
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  border-radius: 8px;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  /* This is the drag surface — don't let touch scrolling steal the
+     press-and-slide gesture used to reorder items. */
+  touch-action: none;
+}
+.dragHandle:active {
+  cursor: grabbing;
+  background: #f3eee7;
 }
 .moreBackBar {
   display: flex;
@@ -1004,6 +1035,18 @@ dialog::backdrop {
   white-space: nowrap;
   text-align: right;
 }
+.progressTrack {
+  margin-top: 6px;
+  height: 10px;
+  border-radius: 999px;
+  background: #f3eee7;
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand2), var(--brand));
+}
 .groupPillRow {
   display: flex;
   flex-wrap: wrap;
@@ -1029,4 +1072,60 @@ dialog::backdrop {
   .courseGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---- Welcome / "which teacher is this device" splash ---- */
+.welcomeOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61, 36, 25, 0.55);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+  z-index: 200;
+  padding: 24px;
+}
+.welcomeCard {
+  background: var(--card);
+  border-radius: 32px;
+  max-width: 420px;
+  width: 100%;
+  /* Centers horizontally and, unlike flex/grid centering, still scrolls
+     into view properly if the card is ever taller than the viewport. */
+  margin: 5vh auto;
+  overflow: hidden;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+.welcomeLogo {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Card clips the corners via overflow, so the image itself stays square. */
+  border-radius: 0;
+}
+.welcomeBody {
+  padding: 24px 28px 32px;
+}
+.welcomeTitle {
+  font-size: 26px;
+  margin: 0;
+}
+.welcomeSub {
+  color: var(--brand);
+  font-weight: 900;
+  margin: 4px 0 22px;
+}
+.welcomeAsk {
+  font-weight: 900;
+  margin: 0 0 14px;
+}
+.welcomeTeacherList {
+  display: grid;
+  gap: 10px;
+}
+.welcomeTeacherBtn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 18px;
+  font-size: 16px;
 }

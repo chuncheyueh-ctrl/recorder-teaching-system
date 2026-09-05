@@ -3,6 +3,7 @@
 import { Check, ChevronRight, ClipboardCheck, ClipboardList, Circle, UserRound, Users } from "lucide-react";
 import { useAppState } from "@/state/app-state-provider";
 import { slotsForDate, timeRange } from "@/lib/date-utils";
+import { AttentionCard } from "@/components/today/attention-card";
 import type { Availability, LessonRecord } from "@/lib/types";
 
 const AVATAR_TONES = ["tone1", "tone2", "tone3", "tone4"];
@@ -59,6 +60,7 @@ export function TodayPage() {
 
   return (
     <div className="grid">
+      <AttentionCard />
       <div className="card">
         <div className="sectionHead">
           <div className="badgeCircle green"><Users size={20} /></div>

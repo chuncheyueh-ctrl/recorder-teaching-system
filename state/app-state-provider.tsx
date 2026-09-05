@@ -13,6 +13,7 @@ import type { AppState, EntityTable, PageKey } from "@/lib/types";
 import { apiGet, apiPost, subscribeToChanges, type ApiGetResult } from "@/lib/api";
 import { normalizeDateKey, toDateKey } from "@/lib/date-utils";
 import { loadTodaySnapshot, saveTodaySnapshot } from "@/lib/local-cache";
+import { loadMyTeacherId, saveMyTeacherId } from "@/lib/my-teacher";
 
 // The backend doesn't always send dateKey as a plain "YYYY-MM-DD" string —
 // normalize every date-keyed entity on the way in so the rest of the app
@@ -63,13 +64,20 @@ export interface RecordDialogTarget {
   teacherId?: string;
 }
 
+export interface EventDialogTarget {
+  id?: string;
+  /** Pre-select this event type for a brand-new event (e.g. opening the
+   * dialog from 表演中心 should default to 演出, not the first type in the list). */
+  defaultType?: string;
+}
+
 interface DialogsState {
   record: RecordDialogTarget | null;
   availability: boolean;
   teacher: { id?: string } | null;
   student: { id?: string } | null;
   slot: { id?: string } | null;
-  event: { id?: string } | null;
+  event: EventDialogTarget | null;
 }
 
 const CLOSED_DIALOGS: DialogsState = {
@@ -98,8 +106,15 @@ interface AppStateContextValue {
   openTeacherDialog: (id?: string) => void;
   openStudentDialog: (id?: string) => void;
   openSlotDialog: (id?: string) => void;
-  openEventDialog: (id?: string) => void;
+  openEventDialog: (target?: EventDialogTarget) => void;
   closeDialogs: () => void;
+  /** Which teacher this device belongs to — "" until resolved from
+   * localStorage post-mount, or if nobody's picked one yet. */
+  myTeacherId: string;
+  /** True once the localStorage check above has actually run — lets the
+   * welcome screen tell "not chosen yet" apart from "still checking". */
+  myTeacherChecked: boolean;
+  setMyTeacherId: (id: string) => void;
 }
 
 const AppStateContext = createContext<AppStateContextValue | null>(null);
@@ -244,6 +259,24 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     [save]
   );
 
+  // Resolved from localStorage post-mount (see the "today" effect above for
+  // why this can't happen synchronously) — this is the one place identity
+  // ever changes, so every consumer (TopBar's greeting, the record/
+  // availability dialogs' default teacher, WelcomeScreen) reacts together
+  // instead of each keeping its own stale read.
+  const [myTeacherId, setMyTeacherIdState] = useState("");
+  const [myTeacherChecked, setMyTeacherChecked] = useState(false);
+  useEffect(() => {
+    queueMicrotask(() => {
+      setMyTeacherIdState(loadMyTeacherId());
+      setMyTeacherChecked(true);
+    });
+  }, []);
+  const setMyTeacherId = useCallback((id: string) => {
+    saveMyTeacherId(id);
+    setMyTeacherIdState(id);
+  }, []);
+
   const [dialogs, setDialogs] = useState<DialogsState>(CLOSED_DIALOGS);
   const closeDialogs = useCallback(() => setDialogs(CLOSED_DIALOGS), []);
   const openRecordDialog = useCallback(
@@ -254,7 +287,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const openTeacherDialog = useCallback((id?: string) => setDialogs({ ...CLOSED_DIALOGS, teacher: { id } }), []);
   const openStudentDialog = useCallback((id?: string) => setDialogs({ ...CLOSED_DIALOGS, student: { id } }), []);
   const openSlotDialog = useCallback((id?: string) => setDialogs({ ...CLOSED_DIALOGS, slot: { id } }), []);
-  const openEventDialog = useCallback((id?: string) => setDialogs({ ...CLOSED_DIALOGS, event: { id } }), []);
+  const openEventDialog = useCallback(
+    (target: EventDialogTarget = {}) => setDialogs({ ...CLOSED_DIALOGS, event: target }),
+    []
+  );
 
   const value = useMemo(
     () => ({
@@ -276,6 +312,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       openSlotDialog,
       openEventDialog,
       closeDialogs,
+      myTeacherId,
+      myTeacherChecked,
+      setMyTeacherId,
     }),
     [
       state,
@@ -295,6 +334,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       openSlotDialog,
       openEventDialog,
       closeDialogs,
+      myTeacherId,
+      myTeacherChecked,
+      setMyTeacherId,
     ]
   );
 

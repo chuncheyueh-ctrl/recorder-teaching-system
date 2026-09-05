@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAppState } from "@/state/app-state-provider";
 import { uid } from "@/lib/api";
 import { slotsForDate as slotsMatchingDate, timeRange } from "@/lib/date-utils";
-import { pickDefaultTeacherId, saveMyTeacherId } from "@/lib/my-teacher";
+import { pickDefaultTeacherId } from "@/lib/my-teacher";
 import type { LessonRecord, Slot, Student } from "@/lib/types";
 import { Modal } from "@/components/ui/modal";
 
@@ -60,7 +60,7 @@ function slotsForForm(slots: Slot[], dateKey: string, mustInclude?: string): Slo
 }
 
 function RecordForm({ target }: { target: { slotId?: string; recordId?: string; teacherId?: string } }) {
-  const { state, closeDialogs, save } = useAppState();
+  const { state, closeDialogs, save, myTeacherId, setMyTeacherId } = useAppState();
   const existing = target.recordId ? state.records.find((r) => r.id === target.recordId) : undefined;
   const initialDateKey = existing?.dateKey || state.dateKey;
   const initialSlotId =
@@ -77,7 +77,7 @@ function RecordForm({ target }: { target: { slotId?: string; recordId?: string; 
     dateKey: initialDateKey,
     slotId: initialSlotId,
     groupName: existing?.groupName || state.config.group?.[0] || "",
-    teacherId: existing?.teacherId || target.teacherId || pickDefaultTeacherId(state.teachers),
+    teacherId: existing?.teacherId || target.teacherId || pickDefaultTeacherId(state.teachers, myTeacherId),
     studentIds: existing?.studentIds || [],
     focusStudentIds: existing?.focusStudentIds || [],
     focusTags: existing?.focusTags || [],
@@ -247,7 +247,7 @@ function RecordForm({ target }: { target: { slotId?: string; recordId?: string; 
               value={form.teacherId}
               onChange={(e) => {
                 setForm({ ...form, teacherId: e.target.value });
-                saveMyTeacherId(e.target.value);
+                setMyTeacherId(e.target.value);
               }}
             >
               {state.teachers.map((t) => (

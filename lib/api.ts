@@ -16,6 +16,25 @@ import { db } from "./firebase";
 import type { Availability, AppConfig, AppState, EntityTable } from "./types";
 import { addDays, monday } from "./date-utils";
 
+// Records need to cover three different windows at once: the exact 7-day
+// week (for 紀錄 and record editing), the whole month (for 本月進度 on the
+// 今日 attention card), and yesterday specifically (for 昨天未參與學生,
+// which falls outside the month range on the 1st of the month). Widening a
+// single range to the union of all three keeps this one query correct for
+// all of them instead of juggling separate fetches.
+function recordsRange(dateKey: string): { start: string; end: string } {
+  const weekStart = monday(dateKey);
+  const weekEnd = addDays(weekStart, 6);
+  const month = dateKey.slice(0, 7);
+  const monthStart = `${month}-01`;
+  const monthEnd = `${month}-31`;
+  const yesterday = addDays(dateKey, -1);
+  return {
+    start: [weekStart, monthStart, yesterday].sort()[0],
+    end: [weekEnd, monthEnd, yesterday].sort().slice(-1)[0],
+  };
+}
+
 export function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
 }
@@ -25,6 +44,7 @@ export function uid(prefix: string): string {
 // pickers would render empty until someone edits them by hand.
 const DEFAULT_CONFIG: Required<AppConfig> = {
   group: ["初階", "中階", "大團", "社團課", "個別加強", "其他"],
+  groupCategory: {},
   // No sensible universal default — class codes are entirely school-specific
   // and are meant to be seeded through 班級管理 (or an import) instead.
   class: [],
@@ -53,17 +73,20 @@ export async function apiGet(dateKey: string): Promise<ApiGetResult> {
     const weekStart = monday(dateKey);
     const weekEnd = addDays(weekStart, 6);
     const month = dateKey.slice(0, 7);
-    const monthStart = `${month}-01`;
-    const monthEnd = `${month}-31`;
+    const recordsWindow = recordsRange(dateKey);
 
+    // Events aren't fetched by month like records/availability — 表演中心
+    // needs to show upcoming performances regardless of which month is
+    // currently in view, and the collection stays small (a handful of
+    // performances/rehearsals a year, not one row per day) either way.
     const [teachersSnap, studentsSnap, slotsSnap, availabilitySnap, recordsSnap, eventsSnap, configSnap] =
       await Promise.all([
         getDocs(collection(db, "teachers")),
         getDocs(collection(db, "students")),
         getDocs(collection(db, "slots")),
         getDocs(query(collection(db, "availability"), where("dateKey", ">=", weekStart), where("dateKey", "<=", weekEnd))),
-        getDocs(query(collection(db, "records"), where("dateKey", ">=", weekStart), where("dateKey", "<=", weekEnd))),
-        getDocs(query(collection(db, "events"), where("dateKey", ">=", monthStart), where("dateKey", "<=", monthEnd))),
+        getDocs(query(collection(db, "records"), where("dateKey", ">=", recordsWindow.start), where("dateKey", "<=", recordsWindow.end))),
+        getDocs(collection(db, "events")),
         getDoc(doc(db, "config", "app")),
       ]);
 
@@ -91,9 +114,7 @@ export async function apiGet(dateKey: string): Promise<ApiGetResult> {
 export function subscribeToChanges(dateKey: string, onChange: () => void): () => void {
   const weekStart = monday(dateKey);
   const weekEnd = addDays(weekStart, 6);
-  const month = dateKey.slice(0, 7);
-  const monthStart = `${month}-01`;
-  const monthEnd = `${month}-31`;
+  const recordsWindow = recordsRange(dateKey);
 
   const unsubscribers = [
     onSnapshot(collection(db, "teachers"), onChange),
@@ -104,13 +125,10 @@ export function subscribeToChanges(dateKey: string, onChange: () => void): () =>
       onChange
     ),
     onSnapshot(
-      query(collection(db, "records"), where("dateKey", ">=", weekStart), where("dateKey", "<=", weekEnd)),
+      query(collection(db, "records"), where("dateKey", ">=", recordsWindow.start), where("dateKey", "<=", recordsWindow.end)),
       onChange
     ),
-    onSnapshot(
-      query(collection(db, "events"), where("dateKey", ">=", monthStart), where("dateKey", "<=", monthEnd)),
-      onChange
-    ),
+    onSnapshot(collection(db, "events"), onChange),
     onSnapshot(doc(db, "config", "app"), onChange),
   ];
 
@@ -228,8 +246,13 @@ async function promoteStudentClasses(payload: Record<string, unknown>): Promise<
 async function addConfigItem(payload: Record<string, unknown>): Promise<ApiPostResult> {
   const key = String(payload.key || "");
   const value = String(payload.value || "");
+  const category = payload.category ? String(payload.category) : undefined;
   if (!key || !value) return { ok: false, message: "缺少參數" };
-  await setDoc(doc(db, "config", "app"), { [key]: arrayUnion(value) }, { merge: true });
+  const data: Record<string, unknown> = { [key]: arrayUnion(value) };
+  // Firestore's setDoc merge deep-merges nested maps, so this only ever
+  // touches this one key inside groupCategory, not the whole map.
+  if (key === "group" && category) data.groupCategory = { [value]: category };
+  await setDoc(doc(db, "config", "app"), data, { merge: true });
   return { ok: true, action: "config.addItem" };
 }
 
@@ -239,6 +262,47 @@ async function removeConfigItem(payload: Record<string, unknown>): Promise<ApiPo
   if (!key || !value) return { ok: false, message: "缺少參數" };
   await setDoc(doc(db, "config", "app"), { [key]: arrayRemove(value) }, { merge: true });
   return { ok: true, action: "config.removeItem" };
+}
+
+// Renaming a class/group has to cascade to every student that references
+// the old string — className is a plain field, groups is a comma-joined
+// string — or those students would silently fall out of that class/group
+// the moment the label changed underneath them.
+async function renameConfigItem(payload: Record<string, unknown>): Promise<ApiPostResult> {
+  const key = String(payload.key || "");
+  const oldValue = String(payload.oldValue || "");
+  const newValue = String(payload.newValue || "");
+  if (!key || !oldValue || !newValue) return { ok: false, message: "缺少參數" };
+  if (oldValue === newValue) return { ok: true, action: "config.renameItem" };
+
+  const configSnap = await getDoc(doc(db, "config", "app"));
+  const currentList = ((configSnap.data() as Record<string, string[]> | undefined)?.[key]) || [];
+  if (currentList.includes(newValue)) return { ok: false, message: `「${newValue}」已經存在` };
+  const nextList = currentList.map((v) => (v === oldValue ? newValue : v));
+
+  const batch = writeBatch(db);
+  const configUpdate: Record<string, unknown> = { [key]: nextList };
+  if (key === "group") {
+    const categories = (configSnap.data() as { groupCategory?: Record<string, string> } | undefined)?.groupCategory || {};
+    if (categories[oldValue]) configUpdate.groupCategory = { [newValue]: categories[oldValue] };
+  }
+  batch.set(doc(db, "config", "app"), configUpdate, { merge: true });
+
+  if (key === "class") {
+    const affected = await getDocs(query(collection(db, "students"), where("className", "==", oldValue)));
+    affected.docs.forEach((d) => batch.set(d.ref, { className: newValue }, { merge: true }));
+  } else if (key === "group") {
+    const allStudents = await getDocs(collection(db, "students"));
+    allStudents.docs.forEach((d) => {
+      const groups = ((d.data() as { groups?: string }).groups || "").split(",").map((g) => g.trim()).filter(Boolean);
+      if (!groups.includes(oldValue)) return;
+      const nextGroups = groups.map((g) => (g === oldValue ? newValue : g)).join(",");
+      batch.set(d.ref, { groups: nextGroups }, { merge: true });
+    });
+  }
+
+  await batch.commit();
+  return { ok: true, action: "config.renameItem" };
 }
 
 export async function apiPost(payload: Record<string, unknown>): Promise<ApiPostResult> {
@@ -258,6 +322,10 @@ export async function apiPost(payload: Record<string, unknown>): Promise<ApiPost
 
     if (action === "config.removeItem") {
       return await removeConfigItem(payload);
+    }
+
+    if (action === "config.renameItem") {
+      return await renameConfigItem(payload);
     }
 
     if (action === "config.save") {
