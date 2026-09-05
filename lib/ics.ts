@@ -50,9 +50,18 @@ export function downloadEventIcs(event: CalendarEvent) {
   if (isIOSSafari()) {
     // iOS Safari has no generic "download this blob" support — an
     // <a download> pointing at a blob: URL fails with "Safari 無法下載此
-    // 檔案". Navigating straight to a data: URI instead lets it recognize
-    // the text/calendar type and open the native add-to-calendar sheet.
-    window.location.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+    // 檔案". A data: URI opened in a new tab lets it recognize the
+    // text/calendar type and open the native add-to-calendar sheet instead.
+    // (Setting window.location.href directly works once, but Safari treats
+    // re-assigning it to an identical string — the same event clicked again
+    // — as a no-op, so the second tap silently does nothing.)
+    const a = document.createElement("a");
+    a.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     return;
   }
 
