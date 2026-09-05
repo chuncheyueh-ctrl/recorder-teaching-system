@@ -499,13 +499,10 @@ dialog::backdrop {
   box-shadow: inset 0 0 0 3px var(--brand);
 }
 /* A filled cell's background is one or more event colors (see
-   bandBackground) — those are all medium-dark, so white text with a
-   shadow stays readable regardless of which color(s) landed there. */
+   bandBackground) — the palette is deliberately light/dusty, so dark
+   ink text reads better on it than white would. */
 .eventCalCell.filled {
-  color: #fff;
-}
-.eventCalCell.filled .eventCalDate {
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
 }
 .eventCalDate {
   font-size: 13px;
@@ -905,8 +902,8 @@ dialog::backdrop {
 }
 .eventColorSelect {
   width: auto;
-  border: 0;
-  color: #fff;
+  border: 1px solid rgba(61, 36, 25, 0.15);
+  color: var(--ink);
   font-weight: 900;
   font-size: 12px;
   padding: 8px 10px;
