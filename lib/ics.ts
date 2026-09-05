@@ -68,16 +68,6 @@ function icsRouteUrl(event: CalendarEvent): string {
   return `/api/ics?${params.toString()}`;
 }
 
-function icsWebcalUrl(event: CalendarEvent): string {
-  // webcal: hands the resource straight to Calendar.app via iOS's own
-  // URL-scheme handler, bypassing Safari's download engine entirely — that
-  // engine is what's been throwing "Safari 無法下載此檔案" regardless of
-  // Content-Type/Content-Disposition/Content-Length, all of which were
-  // independently confirmed correct against the deployed endpoint. iOS
-  // fetches the resource over https under the hood despite the scheme name.
-  return `webcal://${window.location.host}${icsRouteUrl(event)}`;
-}
-
 /**
  * Downloads a single event as a .ics file — tapping it on a phone opens the
  * native "add to calendar" flow, no backend or calendar-account integration
@@ -85,7 +75,14 @@ function icsWebcalUrl(event: CalendarEvent): string {
  */
 export function downloadEventIcs(event: CalendarEvent) {
   if (isIOSSafari()) {
-    window.location.href = icsWebcalUrl(event);
+    // webcal: (tried before this) does reach Calendar.app, but it treats
+    // the resource as a read-only *subscription feed* to add, not a
+    // single event — wrong flow. Now that Calendar.app has proven it can
+    // parse this exact ics content fine (it got as far as the subscribe
+    // screen), the missing METHOD/CALSCALE fields were likely why plain
+    // https: navigation was failing before, not the navigation itself —
+    // worth trying https: again now that the content is fixed.
+    window.location.href = icsRouteUrl(event);
     return;
   }
 
