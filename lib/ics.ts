@@ -80,14 +80,19 @@ function icsRouteUrl(event: CalendarEvent): string {
  */
 export function downloadEventIcs(event: CalendarEvent) {
   if (isIOSSafari()) {
-    // webcal: (tried before this) does reach Calendar.app, but it treats
-    // the resource as a read-only *subscription feed* to add, not a
-    // single event — wrong flow. Now that Calendar.app has proven it can
-    // parse this exact ics content fine (it got as far as the subscribe
-    // screen), the missing METHOD/CALSCALE fields were likely why plain
-    // https: navigation was failing before, not the navigation itself —
-    // worth trying https: again now that the content is fixed.
-    window.location.href = icsRouteUrl(event);
+    // Headers, body content, and URL path have all been independently
+    // verified correct against the deployed endpoint, and https: still
+    // fails identically every time — so the one thing never actually
+    // tried is *how* the navigation fires. Every attempt so far has been
+    // a script-driven `window.location.href = ...` reassignment; iOS
+    // Safari's download permission checks are known to sometimes treat
+    // that differently from a genuine <a> tag click, even one dispatched
+    // synchronously from the same click handler.
+    const a = document.createElement("a");
+    a.href = icsRouteUrl(event);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     return;
   }
 
